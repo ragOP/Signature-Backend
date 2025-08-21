@@ -23,14 +23,14 @@ app.get("/", (req, res) => {
 // /api/payment/razorpay
 app.use("/api/payment", require("./routers/payment/index"));
 
-// ------ Astra Soul -----//
-app.use("/api/lander1", require("./routers/lander1/index"));
+// // ------ Astra Soul -----//
+// app.use("/api/lander1", require("./routers/lander1/index"));
 
-// ------ Astra Love -----//
-app.use("/api/lander2", require("./routers/lander2/index"));
+// // ------ Astra Love -----//
+// app.use("/api/lander2", require("./routers/lander2/index"));
 
-// ----- SoulMate -----//
-app.use("/api/lander3", require("./routers/lander3/index"));
+// // ----- SoulMate -----//
+// app.use("/api/lander3", require("./routers/lander3/index"));
 
 // ---- Signature -----//
 app.use("/api/lander4", require("./routers/lander4/index"));
