@@ -21,18 +21,18 @@ router.post("/create-order", async (req, res) => {
     razorpaySignature,
     additionalProducts = [],
   } = req.body;
-  try {
-    // const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
-    // hmac.update(razorpayOrderId + "|" + razorpayPaymentId);
-    // const generatedSignature = hmac.digest("hex");
+  try { 
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
+    hmac.update(razorpayOrderId + "|" + razorpayPaymentId);
+    const generatedSignature = hmac.digest("hex");
 
-    // if (generatedSignature !== razorpaySignature) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     data: null,
-    //     message: "Invalid Payment",
-    //   });
-    // }
+    if (generatedSignature !== razorpaySignature) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Invalid Payment",
+      });
+    }
     const payload = {
       amount,
       orderId,
@@ -104,13 +104,13 @@ router.post("/create-order-abd", async (req, res) => {
 /**
  * DELETE /api/signature/rag/delete-order-abd/:id
  */
-router.delete("/delete-order-abd/:email", async (req, res) => {
-  const { email } = req.params;
-  if (!email)
-    return res.status(400).json({ success: false, error: "email required" });
+router.delete("/delete-order-abd/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id)
+    return res.status(400).json({ success: false, error: "id required" });
 
   try {
-    const order = await signatureRagAbdOrderModel.deleteMany({ email });
+    const order = await signatureRagAbdOrderModel.deleteMany({ _id: id });
     return res.status(200).json({
       success: true,
       data: order,
