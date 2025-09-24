@@ -124,8 +124,15 @@ router.get("/get-orders-abd", async (req, res) => {
 });
 
 router.get("/get-orders/main", async (req, res) => {
-  const { page = 1, limit = 1000 } = req.query;
-  const orders = await orderModel4Abd.find({})
+  const { page = 1, limit = 1000, startDate, endDate } = req.query;
+  const query = {};
+  if (startDate && endDate) {
+    query.createdAt = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    };
+  }
+  const orders = await orderModel4Abd.find(query)
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(limit);
@@ -137,13 +144,15 @@ router.get("/get-orders/main", async (req, res) => {
 
 router.get("/get-orders/abd-main", async (req, res) => {
   const { page = 1, limit = 1000, startDate, endDate } = req.query;
+  const query = {};
+  if (startDate && endDate) {
+    query.createdAt = { 
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    };
+  }
   const orders = await orderModel4Abd
-    .find({
-      createdAt: {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      },
-    })
+    .find(query)
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(limit);
