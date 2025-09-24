@@ -123,4 +123,34 @@ router.get("/get-orders-abd", async (req, res) => {
   return res.status(200).json({ success: true, data: orders });
 });
 
+router.get("/get-orders/main", async (req, res) => {
+  const { page = 1, limit = 1000 } = req.query;
+  const orders = await orderModel4Abd.find({})
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit);
+  return res.status(200).json({
+    success: true,
+    data: orders,
+  });
+});
+
+router.get("/get-orders/abd-main", async (req, res) => {
+  const { page = 1, limit = 1000, startDate, endDate } = req.query;
+  const orders = await orderModel4Abd
+    .find({
+      createdAt: {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      },
+    })
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit);
+  return res.status(200).json({
+    success: true,
+    data: orders,
+  });
+});
+
 module.exports = router;
