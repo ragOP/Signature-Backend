@@ -18,7 +18,7 @@ const createCashfreeSession = async (req, res) => {
       quantity = 1,
     } = req.body;
 
-    const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const orderId = `order_${Date.now()}`;
 
     const cartUrl = `${MAIN_URL}/confirmation`;
 
@@ -31,28 +31,39 @@ const createCashfreeSession = async (req, res) => {
 
     let returnUrl = `${finalUrl}?orderId=${orderId}&orderType=${orderType}`;
 
+    const requestData = {
+      order_id: orderId,
+      order_amount: amount,
+      order_currency: "INR",
+      customer_details: {
+        customer_id: "cust_001",
+        customer_name: fullName || "Customer",
+        customer_email: email || "test@example.com",
+        customer_phone: phoneNumber || "9999999999",
+      },
+      order_meta: {
+        return_url: returnUrl,
+        notify_url: `${MAIN_URL}/api/payment/webhook`,
+      },
+      order_note: remarks,
+      order_tags:
+        additionalProducts && additionalProducts.length > 0
+          ? additionalProducts
+          : null,
+    };
+
+    console.log("Request URL:", `${CASHFREE_URL}/orders`);
+    console.log("Request Data:", JSON.stringify(requestData, null, 2));
+    console.log("Request Headers:", {
+      "Content-Type": "application/json",
+      "x-client-id": process.env.CASHFREE_CLIENT_ID ? "Set" : "Not set",
+      "x-client-secret": process.env.CASHFREE_SECRET_KEY ? "Set" : "Not set",
+      "x-api-version": "2025-01-01",
+    });
+
     const response = await axios.post(
       `${CASHFREE_URL}/orders`,
-      {
-        order_id: orderId,
-        order_amount: amount,
-        order_currency: "INR",
-        customer_details: {
-          customer_id: "cust_001",
-          customer_name: fullName || "Customer",
-          customer_email: email || "test@example.com",
-          customer_phone: phoneNumber || "9999999999",
-        },
-        order_meta: {
-          return_url: returnUrl,
-          notify_url: `${MAIN_URL}/api/payment/webhook`,
-        },
-        order_note: remarks,
-        order_tags:
-          additionalProducts && additionalProducts.length > 0
-            ? additionalProducts
-            : null,
-      },
+      requestData,
       {
         headers: {
           "Content-Type": "application/json",
