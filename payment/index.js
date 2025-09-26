@@ -1,6 +1,5 @@
 const axios = require("axios");
 
-const CASHFREE_URL = "https://sandbox.cashfree.com/pg";
 const MAIN_URL = "https://www.thesignaturestudio.in";
 
 const createCashfreeSession = async (req, res) => {
@@ -24,10 +23,13 @@ const createCashfreeSession = async (req, res) => {
 
     const finalUrl = url ? url : cartUrl;
 
+    console.log(">>>>", process.env.CASHFREE_CLIENT_ID);
+    console.log(">>>>", process.env.CASHFREE_SECRET_KEY);
+
     let returnUrl = `${finalUrl}?orderId=${orderId}&orderType=${orderType}`;
 
     const response = await axios.post(
-      `${CASHFREE_URL}/orders`,
+      `${process.env.CASHFREE_URL}/orders`,
       {
         order_id: orderId,
         order_amount: amount,
@@ -72,14 +74,17 @@ const getCashfreePaymentDetails = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const response = await axios.get(`${CASHFREE_URL}/orders/${id}/payments`, {
-      headers: {
-        "x-client-id": process.env.CASHFREE_CLIENT_ID,
-        "x-client-secret": process.env.CASHFREE_SECRET_KEY,
-        Accept: "application/json",
-        "x-api-version": "2025-01-01",
-      },
-    });
+    const response = await axios.get(
+      `${process.env.CASHFREE_URL}/orders/${id}/payments`,
+      {
+        headers: {
+          "x-client-id": process.env.CASHFREE_CLIENT_ID,
+          "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+          Accept: "application/json",
+          "x-api-version": "2025-01-01",
+        },
+      }
+    );
 
     const data = response.data;
     res.json({ data: data });
@@ -95,5 +100,4 @@ const getCashfreePaymentDetails = async (req, res) => {
 module.exports = {
   createCashfreeSession,
   getCashfreePaymentDetails,
-  CASHFREE_URL,
 };
