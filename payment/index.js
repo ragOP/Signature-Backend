@@ -1,6 +1,7 @@
 const axios = require("axios");
 
 const MAIN_URL = "https://www.thesignaturestudio.in";
+const CASHFREE_URL = process.env.CASHFREE_URL || "https://sandbox.cashfree.com/pg";
 
 const createCashfreeSession = async (req, res) => {
   try {
@@ -17,19 +18,21 @@ const createCashfreeSession = async (req, res) => {
       quantity = 1,
     } = req.body;
 
-    const orderId = "order_" + Date.now();
+    const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const cartUrl = `${MAIN_URL}/confirmation`;
 
     const finalUrl = url ? url : cartUrl;
 
-    console.log(">>>>", process.env.CASHFREE_CLIENT_ID);
-    console.log(">>>>", process.env.CASHFREE_SECRET_KEY);
+    console.log("CASHFREE_URL:", CASHFREE_URL);
+    console.log("CASHFREE_CLIENT_ID:", process.env.CASHFREE_CLIENT_ID ? "Set" : "Not set");
+    console.log("CASHFREE_SECRET_KEY:", process.env.CASHFREE_SECRET_KEY ? "Set" : "Not set");
+    console.log("Order ID:", orderId);
 
     let returnUrl = `${finalUrl}?orderId=${orderId}&orderType=${orderType}`;
 
     const response = await axios.post(
-      `${process.env.CASHFREE_URL}/orders`,
+      `${CASHFREE_URL}/orders`,
       {
         order_id: orderId,
         order_amount: amount,
@@ -75,7 +78,7 @@ const getCashfreePaymentDetails = async (req, res) => {
 
   try {
     const response = await axios.get(
-      `${process.env.CASHFREE_URL}/orders/${id}/payments`,
+      `${CASHFREE_URL}/orders/${id}/payments`,
       {
         headers: {
           "x-client-id": process.env.CASHFREE_CLIENT_ID,
