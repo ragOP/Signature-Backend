@@ -63,7 +63,9 @@ const createCashfreeSession = async (req, res) => {
     res.json({ data: data });
   } catch (error) {
     console.error("Error creating session:", error.response?.data || error);
-    res.status(500).json({ error: "Failed to create session" });
+    res
+      .status(500)
+      .json({ error: "Failed to create session", ...error.response?.data });
   }
 };
 
