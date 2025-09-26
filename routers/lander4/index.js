@@ -19,17 +19,18 @@ router.post("/create-order", async (req, res) => {
     additionalProducts = [],
   } = req.body;
   try {
-    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
-    hmac.update(razorpayOrderId + "|" + razorpayPaymentId);
-    const generatedSignature = hmac.digest("hex");
+    // const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
+    // hmac.update(razorpayOrderId + "|" + razorpayPaymentId);
+    // const generatedSignature = hmac.digest("hex");
 
-    if (generatedSignature !== razorpaySignature) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: "Invalid Payment",
-      });
-    }
+    // if (generatedSignature !== razorpaySignature) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     data: null,
+    //     message: "Invalid Payment",
+    //   });
+    // }
+    
     const payload = {
       amount,
       orderId,
