@@ -1,6 +1,7 @@
 const axios = require("axios");
 
 const CASHFREE_URL = "https://sandbox.cashfree.com/pg";
+const MAIN_URL = "https://www.thesignaturestudio.in";
 
 const createCashfreeSession = async (req, res) => {
   try {
@@ -19,7 +20,7 @@ const createCashfreeSession = async (req, res) => {
 
     const orderId = "order_" + Date.now();
 
-    const cartUrl = "https://www.thesignaturestudio.in/confirmation";
+    const cartUrl = `${MAIN_URL}/confirmation`;
 
     const finalUrl = url ? url : cartUrl;
 
@@ -33,21 +34,19 @@ const createCashfreeSession = async (req, res) => {
         order_currency: "INR",
         customer_details: {
           customer_id: "cust_001",
-          customer_email: "test@example.com",
-          customer_phone: "9999999999",
+          customer_name: fullName || "Customer",
+          customer_email: email || "test@example.com",
+          customer_phone: phoneNumber || "9999999999",
         },
         order_meta: {
           return_url: returnUrl,
-          order_type: orderType,
-          quantity: quantity,
-          additional_products: additionalProducts,
-          profession: profession,
-          remarks: remarks,
-          full_name: fullName,
-          email: email,
-          phone_number: phoneNumber,
-          url: url,
+          notify_url: `${MAIN_URL}/api/payment/webhook`,
         },
+        order_note: remarks,
+        order_tags:
+          additionalProducts && additionalProducts.length > 0
+            ? additionalProducts
+            : null,
       },
       {
         headers: {
