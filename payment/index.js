@@ -1,7 +1,8 @@
 const axios = require("axios");
 
 const MAIN_URL = "https://www.thesignaturestudio.in";
-const CASHFREE_URL = process.env.CASHFREE_URL || "https://sandbox.cashfree.com/pg";
+const CASHFREE_URL =
+  process.env.CASHFREE_URL || "https://sandbox.cashfree.com/pg";
 
 const createCashfreeSession = async (req, res) => {
   try {
@@ -25,8 +26,14 @@ const createCashfreeSession = async (req, res) => {
     const finalUrl = url ? url : cartUrl;
 
     console.log("CASHFREE_URL:", CASHFREE_URL);
-    console.log("CASHFREE_CLIENT_ID:", process.env.CASHFREE_CLIENT_ID ? "Set" : "Not set");
-    console.log("CASHFREE_SECRET_KEY:", process.env.CASHFREE_SECRET_KEY ? "Set" : "Not set");
+    console.log(
+      "CASHFREE_CLIENT_ID:",
+      process.env.CASHFREE_CLIENT_ID ? "Set" : "Not set"
+    );
+    console.log(
+      "CASHFREE_SECRET_KEY:",
+      process.env.CASHFREE_SECRET_KEY ? "Set" : "Not set"
+    );
     console.log("Order ID:", orderId);
 
     let returnUrl = `${finalUrl}?orderId=${orderId}&orderType=${orderType}`;
@@ -61,26 +68,20 @@ const createCashfreeSession = async (req, res) => {
       "x-api-version": "2025-01-01",
     });
 
-    const response = await axios.post(
-      `${CASHFREE_URL}/orders`,
-      requestData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "x-client-id": process.env.CASHFREE_CLIENT_ID,
-          "x-client-secret": process.env.CASHFREE_SECRET_KEY,
-          "x-api-version": "2025-01-01",
-        },
-      }
-    );
+    const response = await axios.post(`${CASHFREE_URL}/orders`, requestData, {
+      headers: {
+        "Content-Type": "application/json",
+        "x-client-id": process.env.CASHFREE_CLIENT_ID,
+        "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+        "x-api-version": "2025-01-01",
+      },
+    });
 
     const data = response.data;
     res.json({ data: data });
   } catch (error) {
     console.error("Error creating session:", error.response?.data || error);
-    res
-      .status(500)
-      .json({ error: "Failed to create session", ...error.response?.data });
+    res.status(500).json({ message: "Failed to create session", error: error });
   }
 };
 
@@ -88,17 +89,14 @@ const getCashfreePaymentDetails = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const response = await axios.get(
-      `${CASHFREE_URL}/orders/${id}/payments`,
-      {
-        headers: {
-          "x-client-id": process.env.CASHFREE_CLIENT_ID,
-          "x-client-secret": process.env.CASHFREE_SECRET_KEY,
-          Accept: "application/json",
-          "x-api-version": "2025-01-01",
-        },
-      }
-    );
+    const response = await axios.get(`${CASHFREE_URL}/orders/${id}/payments`, {
+      headers: {
+        "x-client-id": process.env.CASHFREE_CLIENT_ID,
+        "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+        Accept: "application/json",
+        "x-api-version": "2025-01-01",
+      },
+    });
 
     const data = response.data;
     res.json({ data: data });
