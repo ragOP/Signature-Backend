@@ -19,6 +19,13 @@ const createCashfreeSession = async (req, res) => {
       quantity = 1,
     } = req.body;
 
+    // Ensure additionalProducts is always an array
+    const safeAdditionalProducts = Array.isArray(additionalProducts)
+      ? additionalProducts
+      : additionalProducts
+      ? [additionalProducts]
+      : [];
+
     const orderId = `order_${Date.now()}`;
 
     const cartUrl = `${MAIN_URL}/confirmation`;
@@ -54,8 +61,11 @@ const createCashfreeSession = async (req, res) => {
       },
       order_note: remarks,
       order_tags:
-        additionalProducts && additionalProducts.length > 0
-          ? { 0: additionalProducts?.[0] }
+        safeAdditionalProducts.length > 0
+          ? safeAdditionalProducts.reduce((acc, product, index) => {
+              acc[`product_${index}`] = product;
+              return acc;
+            }, {})
           : null,
     };
 
