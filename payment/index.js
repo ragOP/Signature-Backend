@@ -55,7 +55,7 @@ const createCashfreeSession = async (req, res) => {
       order_note: remarks,
       order_tags:
         additionalProducts && additionalProducts.length > 0
-          ? { "1": additionalProducts?.[0] }
+          ? { 0: additionalProducts?.[0] }
           : null,
     };
 
