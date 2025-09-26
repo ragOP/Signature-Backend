@@ -53,13 +53,26 @@ const createCashfreeSession = async (req, res) => {
         notify_url: `${MAIN_URL}/api/payment/webhook`,
       },
       order_note: remarks,
-      order_tags:
-        additionalProducts && additionalProducts.length > 0
-          ? { "product_0": additionalProducts?.[0] }
-          : null,
+      cart_details: {
+        cart_items:
+          additionalProducts && additionalProducts.length > 0
+            ? additionalProducts.map((product, index) => ({
+                item_id: `product_${index}_${Date.now()}`,
+                item_name: product,
+                item_description: "Additional product",
+                item_image_url:
+                  "https://cashfreelogo.cashfree.com/website/landings-cache/landings/occ/brownShoe.png",
+                item_original_unit_price: 0.01,
+                item_discounted_unit_price: 0.01,
+                item_quantity: 1,
+                item_currency: "INR",
+              }))
+            : [],
+      },
     };
 
     console.log("Request URL:", `${CASHFREE_URL}/orders`);
+    console.log("ADDITIONAL", { product_0: additionalProducts?.[0] });
     console.log("Request Data:", JSON.stringify(requestData, null, 2));
     console.log("Request Headers:", {
       "Content-Type": "application/json",
