@@ -285,7 +285,10 @@ router.get("/tasks/:id", async (req, res) => {
       });
     }
 
-    const tasks = await Task.find({ projectId });
+    const tasks = await Task.find({ projectId })
+      .populate("assignedTo", "fullName email") // get assigned user details
+      .populate("createdBy", "fullName email"); // get creator details
+
     res.status(200).json({
       success: true,
       data: tasks,
