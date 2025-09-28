@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Task = require("../../../models/project_0/task/index");
+const mongoose = require("mongoose");
 
 /**
  * @swagger
@@ -48,7 +49,19 @@ router.post("/", async (req, res) => {
   const { title, description, projectId, assignedTo, eta } = req.body;
 
   if (!title || !projectId) {
-    return res.status(400).json({ message: "Title and projectId are required" });
+    return res
+      .status(400)
+      .json({ message: "Title and projectId are required" });
+  }
+
+  // validate projectId as a MongoDB ObjectId
+  if (!mongoose.Types.ObjectId.isValid(projectId)) {
+    return res.status(400).json({ message: "Invalid projectId" });
+  }
+
+  // validate assignedTo as a MongoDB ObjectId
+  if (assignedTo && !mongoose.Types.ObjectId.isValid(assignedTo)) {
+    return res.status(400).json({ message: "Invalid assignedTo" });
   }
 
   try {
