@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Project = require("../../../models/project_0/projects/index");
+const Task = require("../../../models/project_0/task/index");
 
 // POST /projects
 // Create project
@@ -65,6 +66,18 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Project deleted successfully" });
   } catch (error) {
     console.error("Error deleting project:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// GET /projects/:id/tasks
+// Fetch all tasks for a project
+router.get("/:id/tasks", async (req, res) => {
+  try {
+    const tasks = await Task.find({ projectId: req.params.id });
+    res.json(tasks);
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
