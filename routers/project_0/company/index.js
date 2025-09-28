@@ -6,6 +6,27 @@ const Invite = require("../../../models/project_0/invite/index");
 const Project = require("../../../models/project_0/projects/index");
 const crypto = require("crypto");
 
+// GET /companies
+// Returns all companies the user is allowed to see
+router.get("/", async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Fetch companies where user is either the creator or in the users array
+    const companies = await Company.find({
+      $or: [
+        { createdBy: userId }, // user created the company
+        { "users.userId": userId }, // user is a member/admin
+      ],
+    });
+
+    res.json(companies);
+  } catch (error) {
+    console.error("Error fetching companies:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // POST /companies
 // Create Company
 router.post("/", async (req, res) => {
