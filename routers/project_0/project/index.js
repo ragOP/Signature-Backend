@@ -48,61 +48,64 @@ const mongoose = require("mongoose");
  *         description: Internal server error
  */
 router.post("/", async (req, res) => {
-  const { projectName, projectDescription, companyId, members } = req.body;
-
-  if (!projectName || !companyId) {
-    return res
-      .status(400)
-      .json({ message: "projectName and companyId are required" });
-  }
-
-  // Verify as valid mongo db id
-  if (!mongoose.Types.ObjectId.isValid(companyId)) {
-    return res.status(400).json({ message: "Invalid companyId" });
-  }
-
-  // Check if project name already exists
-  const existingProject = await Project.findOne({ projectName });
-  if (existingProject) {
-    return res.status(400).json({ message: "Project name already exists" });
-  }
-
-  // Check if company exists
-  const company = await Company.findById(companyId);
-  if (!company) {
-    return res.status(404).json({ message: "Company not found" });
-  }
-
-  // Verify actual mongo db id for member
-  const invalidMembers = members.filter(
-    (member) => !mongoose.Types.ObjectId.isValid(member)
-  );
-  if (invalidMembers.length > 0) {
-    return res
-      .status(400)
-      .json({ message: "Invalid member ID: " + invalidMembers.join(", ") });
-  }
-
-  // Check if members exist
-  const users = await User.find({ _id: { $in: members } });
-  if (users.length !== members.length) {
-    return res.status(404).json({ message: "Some members do not exist" });
-  }
-
-  // Create the project
   try {
-    const newProject = new Project({
+    const {
+      projectName,
+      projectDescription,
+      companyId,
+      members = [],
+    } = req.body;
+
+    if (!projectName || !companyId) {
+      return res
+        .status(400)
+        .json({ message: "projectName and companyId are required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(companyId)) {
+      return res.status(400).json({ message: "Invalid companyId" });
+    }
+
+    // Run queries in parallel
+    const [existingProject, company] = await Promise.all([
+      Project.findOne({ projectName, companyId }),
+      Company.findById(companyId),
+    ]);
+
+    if (existingProject) {
+      return res.status(400).json({ message: "Project name already exists" });
+    }
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    // Validate member IDs
+    const invalidMembers = members.filter(
+      (id) => !mongoose.Types.ObjectId.isValid(id)
+    );
+    if (invalidMembers.length) {
+      return res.status(400).json({
+        message: `Invalid member ID(s): ${invalidMembers.join(", ")}`,
+      });
+    }
+
+    // Ensure all members exist
+    const users = await User.find({ _id: { $in: members } });
+    if (users.length !== members.length) {
+      return res.status(404).json({ message: "Some members do not exist" });
+    }
+
+    // Create project
+    const newProject = await Project.create({
       projectName,
       projectDescription,
       companyId,
       members,
     });
 
-    await newProject.save();
-    res.status(201).json({
-      message: "Project created successfully",
-      project: newProject,
-    });
+    res
+      .status(201)
+      .json({ message: "Project created successfully", project: newProject });
   } catch (error) {
     console.error("Error creating project:", error);
     res.status(500).json({ message: "Internal server error" });
