@@ -272,8 +272,21 @@ router.delete("/:id", async (req, res) => {
  */
 router.get("/:id/tasks", async (req, res) => {
   try {
-    const tasks = await Task.find({ projectId: req.params.id });
-    res.json(tasks);
+    const projectId = req.params.id;
+
+    // validate projectId as a MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid projectId",
+      });
+    }
+
+    const tasks = await Task.find({ projectId });
+    res.status(200).json({
+      success: true,
+      data: tasks,
+    });
   } catch (error) {
     console.error("Error fetching tasks:", error);
     res.status(500).json({ message: "Internal server error" });

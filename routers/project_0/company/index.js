@@ -61,13 +61,6 @@ router.get("/:id", async (req, res) => {
 
 /**
  * @swagger
- * tags:
- *   name: Companies
- *   description: Company management
- */
-
-/**
- * @swagger
  * /company:
  *   post:
  *     summary: Create a new company
