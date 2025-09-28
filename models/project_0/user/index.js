@@ -1,5 +1,19 @@
 const { mongoose, Schema } = require("mongoose");
 
+const role = new Schema(
+  {
+    companyName: {
+      type: String,
+      default: "",
+    },
+    role: {
+      type: String,
+      default: "",
+    },
+  },
+  { timestamps: true }
+);
+
 const userSchema = new Schema(
   {
     fullName: {
@@ -18,11 +32,13 @@ const userSchema = new Schema(
       type: String,
       default: "",
     },
-    role: {
-      type: String,
-      enum: ["Admin", "superAdmin", "dev", "user"],
-      default: "user",
-    },
+    roles: [role],
+    companyIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Company",
+      },
+    ],
   },
   { timestamps: true }
 );

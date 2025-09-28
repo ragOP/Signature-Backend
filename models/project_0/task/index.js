@@ -9,10 +9,7 @@ const TaskSchema = new Schema(
       required: true,
     },
     // to which user
-    assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+    assignees: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
     title: {
       type: String,

@@ -41,8 +41,9 @@ app.use("/api/signature/rag", require("./routers/signature-rag/index"));
 app.use("/api/phonepe-v2", require("./routers/phonepeV2/index"));
 
 // ---- Project 0 -----// Company
-app.use("/api/project-0", require("./routers/project_0/user/index"));
-app.use("/api/project-0", require("./routers/project_0/company/index"));
+app.use("/api/project-0/auth", require("./routers/project_0/user/index"));
+app.use("/api/project-0/company", require("./routers/project_0/company/index"));
+app.use("/api/project-0/project", require("./routers/project_0/project/index"));
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
