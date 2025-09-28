@@ -3,8 +3,47 @@ const router = express.Router();
 const Project = require("../../../models/project_0/projects/index");
 const Task = require("../../../models/project_0/task/index");
 
-// POST /projects
-// Create project
+/**
+ * @swagger
+ * tags:
+ *   name: Projects
+ *   description: Project management
+ */
+
+/**
+ * @swagger
+ * /project:
+ *   post:
+ *     summary: Create a new project
+ *     tags: [Projects]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - projectName
+ *               - companyId
+ *             properties:
+ *               projectName:
+ *                 type: string
+ *               projectDescription:
+ *                 type: string
+ *               companyId:
+ *                 type: string
+ *               members:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Project created successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/", async (req, res) => {
   const { projectName, projectDescription, companyId, members } = req.body;
 
@@ -30,8 +69,42 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /projects/:id
-// Update project details/members
+/**
+ * @swagger
+ * /project/{id}:
+ *   put:
+ *     summary: Update a project
+ *     tags: [Projects]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               projectName:
+ *                 type: string
+ *               projectDescription:
+ *                 type: string
+ *               members:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Project updated successfully
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Internal server error
+ */
 router.put("/:id", async (req, res) => {
   const { projectName, projectDescription, members } = req.body;
 
@@ -53,8 +126,27 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /projects/:id
-// Delete project
+/**
+ * @swagger
+ * /project/{id}:
+ *   delete:
+ *     summary: Delete a project
+ *     tags: [Projects]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project ID
+ *     responses:
+ *       200:
+ *         description: Project deleted successfully
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Internal server error
+ */
 router.delete("/:id", async (req, res) => {
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
@@ -70,8 +162,25 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// GET /projects/:id/tasks
-// Fetch all tasks for a project
+/**
+ * @swagger
+ * /project/{id}/tasks:
+ *   get:
+ *     summary: Get all tasks for a project
+ *     tags: [Projects]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project ID
+ *     responses:
+ *       200:
+ *         description: A list of tasks for the project
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/:id/tasks", async (req, res) => {
   try {
     const tasks = await Task.find({ projectId: req.params.id });

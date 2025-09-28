@@ -6,24 +6,50 @@ const Invite = require("../../../models/project_0/invite/index");
 const Project = require("../../../models/project_0/projects/index");
 const crypto = require("crypto");
 
-// GET /companies
-// Returns all companies the user is allowed to see
+/**
+ * @swagger
+ * tags:
+ *   name: Companies
+ *   description: Company management
+ */
+
+/**
+ * @swagger
+ * /company/{id}:
+ *   get:
+ *     summary: Get companies for a specific user
+ *     tags: [Companies]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID to fetch companies for
+ *     responses:
+ *       200:
+ *         description: List of companies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Company'
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/:id", async (req, res) => {
   try {
-    // const userId = req.user._id;
-    // id coming from url as company/68d90de934df604dbea76475
     const userId = req.params.id;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Fetch companies where user is either the creator or in the users array
     const companies = await Company.find({
-      $or: [
-        { createdBy: userId }, // user created the company
-        { "users.userId": userId }, // user is a member/admin
-      ],
+      $or: [{ createdBy: userId }, { "users.userId": userId }],
     });
 
     res.json(companies);
@@ -33,8 +59,45 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /companies
-// Create Company
+/**
+ * @swagger
+ * tags:
+ *   name: Companies
+ *   description: Company management
+ */
+
+/**
+ * @swagger
+ * /company:
+ *   post:
+ *     summary: Create a new company
+ *     tags: [Companies]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - userId
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               userId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Company created successfully
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/", async (req, res) => {
   const { name, description, userId } = req.body; // Assuming userId is passed in body for now
 
@@ -68,8 +131,43 @@ router.post("/", async (req, res) => {
   }
 });
 
-// POST /companies/:id/invite
-// Invite a user to a company
+/**
+ * @swagger
+ * /company/{id}/invite:
+ *   post:
+ *     summary: Invite a user to a company
+ *     tags: [Companies]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The company ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [admin, member]
+ *     responses:
+ *       201:
+ *         description: Invite sent successfully
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/:id/invite", async (req, res) => {
   const { email, role } = req.body;
   const companyId = req.params.id;
@@ -106,8 +204,43 @@ router.post("/:id/invite", async (req, res) => {
   }
 });
 
-// POST /companies/:id/add-user
-// Add an existing user to a company
+/**
+ * @swagger
+ * /company/{id}/add-user:
+ *   post:
+ *     summary: Add an existing user to a company
+ *     tags: [Companies]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The company ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [admin, member]
+ *     responses:
+ *       200:
+ *         description: User added to company successfully
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Company or user not found
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/:id/add-user", async (req, res) => {
   const { userId, role } = req.body;
   const companyId = req.params.id;
@@ -147,8 +280,27 @@ router.post("/:id/add-user", async (req, res) => {
   }
 });
 
-// GET /companies/:id/members
-// Get all members of a company
+/**
+ * @swagger
+ * /company/{id}/members:
+ *   get:
+ *     summary: Get all members of a company
+ *     tags: [Companies]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The company ID
+ *     responses:
+ *       200:
+ *         description: A list of company members
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/:id/members", async (req, res) => {
   const companyId = req.params.id;
 
@@ -168,8 +320,25 @@ router.get("/:id/members", async (req, res) => {
   }
 });
 
-// GET /companies/:id/projects
-// Fetch all projects for a company
+/**
+ * @swagger
+ * /company/{id}/projects:
+ *   get:
+ *     summary: Get all projects for a company
+ *     tags: [Companies]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The company ID
+ *     responses:
+ *       200:
+ *         description: A list of projects for the company
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/:id/projects", async (req, res) => {
   const companyId = req.params.id;
 

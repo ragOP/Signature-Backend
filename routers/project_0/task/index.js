@@ -2,8 +2,48 @@ const express = require("express");
 const router = express.Router();
 const Task = require("../../../models/project_0/task/index");
 
-// POST /tasks
-// Create task
+/**
+ * @swagger
+ * tags:
+ *   name: Tasks
+ *   description: Task management
+ */
+
+/**
+ * @swagger
+ * /task:
+ *   post:
+ *     summary: Create a new task
+ *     tags: [Tasks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - projectId
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               projectId:
+ *                 type: string
+ *               assignedTo:
+ *                 type: string
+ *               eta:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       201:
+ *         description: Task created successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/", async (req, res) => {
   const { title, description, projectId, assignedTo, eta } = req.body;
 
@@ -29,8 +69,45 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /tasks/:id
-// Update task details
+/**
+ * @swagger
+ * /task/{id}:
+ *   put:
+ *     summary: Update a task
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The task ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               assignedTo:
+ *                 type: string
+ *               eta:
+ *                 type: string
+ *                 format: date-time
+ *               isCompleted:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Task updated successfully
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Internal server error
+ */
 router.put("/:id", async (req, res) => {
   const { title, description, assignedTo, eta, isCompleted } = req.body;
 
@@ -52,8 +129,27 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// PUT /tasks/:id/complete
-// Mark a task as completed
+/**
+ * @swagger
+ * /task/{id}/complete:
+ *   put:
+ *     summary: Mark a task as completed
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The task ID
+ *     responses:
+ *       200:
+ *         description: Task marked as completed
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Internal server error
+ */
 router.put("/:id/complete", async (req, res) => {
   try {
     const task = await Task.findByIdAndUpdate(
@@ -73,8 +169,27 @@ router.put("/:id/complete", async (req, res) => {
   }
 });
 
-// DELETE /tasks/:id
-// Delete task
+/**
+ * @swagger
+ * /task/{id}:
+ *   delete:
+ *     summary: Delete a task
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The task ID
+ *     responses:
+ *       200:
+ *         description: Task deleted successfully
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Internal server error
+ */
 router.delete("/:id", async (req, res) => {
   try {
     const task = await Task.findByIdAndDelete(req.params.id);

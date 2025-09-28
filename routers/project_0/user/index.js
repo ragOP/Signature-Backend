@@ -9,8 +9,44 @@ const router = express.Router();
 // TODO: Use a secret from environment variables
 const JWT_SECRET = "your-super-secret-key";
 
-// POST /auth/signup
-// Create User
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication
+ */
+
+/**
+ * @swagger
+ * /auth/signup:
+ *   post:
+ *     summary: Create a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - email
+ *               - password
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/signup", async (req, res) => {
   const { fullName, email, password } = req.body;
 
@@ -44,8 +80,36 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// POST /auth/login
-// Login User
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login a user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Returns a JWT token
+ *       400:
+ *         description: Invalid credentials
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -75,8 +139,27 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// GET /users/:id
-// Fetch user profile
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get user profile by ID
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID
+ *     responses:
+ *       200:
+ *         description: The user profile
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 router.get("/users/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id).populate(
@@ -93,7 +176,43 @@ router.get("/users/:id", async (req, res) => {
   }
 });
 
-// POST /auth/signup/:token (for invite-based signup)
+/**
+ * @swagger
+ * /auth/signup/{token}:
+ *   post:
+ *     summary: Create a new user via invite
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The invite token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - password
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created and linked to company successfully
+ *       400:
+ *         description: Bad request
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/signup/:token", async (req, res) => {
   const { token } = req.params;
   const { fullName, password } = req.body;
