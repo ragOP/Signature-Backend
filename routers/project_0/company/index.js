@@ -8,10 +8,11 @@ const crypto = require("crypto");
 
 // GET /companies
 // Returns all companies the user is allowed to see
-router.get("/", async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     // const userId = req.user._id;
-    const userId = req.body.userId; // Assuming userId is passed in body for now
+    // id coming from url as company/68d90de934df604dbea76475
+    const userId = req.params.id;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
