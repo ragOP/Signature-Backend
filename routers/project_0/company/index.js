@@ -10,7 +10,12 @@ const crypto = require("crypto");
 // Returns all companies the user is allowed to see
 router.get("/", async (req, res) => {
   try {
-    const userId = req.user._id;
+    // const userId = req.user._id;
+    const userId = req.body.userId; // Assuming userId is passed in body for now
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     // Fetch companies where user is either the creator or in the users array
     const companies = await Company.find({
