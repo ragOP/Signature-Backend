@@ -4,15 +4,15 @@ const projectSchema = new Schema(
   {
     projectName: {
       type: String,
-      default: "",
+      required: true,
     },
     projectDescription: {
       type: String,
-      default: "",
     },
-    company: {
+    companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
+      required: true,
     },
     members: [
       {

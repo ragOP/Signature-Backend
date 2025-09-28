@@ -1,19 +1,5 @@
 const { mongoose, Schema } = require("mongoose");
 
-const role = new Schema(
-  {
-    companyName: {
-      type: String,
-      default: "",
-    },
-    role: {
-      type: String,
-      default: "",
-    },
-  },
-  { timestamps: true }
-);
-
 const userSchema = new Schema(
   {
     fullName: {
@@ -22,24 +8,28 @@ const userSchema = new Schema(
     },
     email: {
       type: String,
-      default: "",
+      unique: true,
+      required: true,
     },
     password: {
       type: String,
-      default: "",
+      required: true,
     },
-    userName: {
-      type: String,
-      default: "",
-    },
-    roles: [role],
-    companyIds: [
+    companies: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "Company",
+        companyId: {
+          type: Schema.Types.ObjectId,
+          ref: "Company",
+        },
+        role: {
+          type: String,
+          enum: ["admin", "member"],
+          default: "member",
+        },
       },
     ],
   },
   { timestamps: true }
 );
+
 module.exports = mongoose.model("User", userSchema);

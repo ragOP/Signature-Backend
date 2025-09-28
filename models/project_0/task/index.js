@@ -2,20 +2,20 @@ const { mongoose, Schema } = require("mongoose");
 
 const TaskSchema = new Schema(
   {
-    // which project
+    title: {
+      type: String,
+      required: true,
+    },
+    description: { type: String },
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Project",
       required: true,
     },
-    // to which user
-    assignees: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-
-    title: {
-      type: String,
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
-    description: { type: String },
-
     eta: {
       type: Date,
     },
@@ -23,7 +23,6 @@ const TaskSchema = new Schema(
       type: Boolean,
       default: false,
     },
-
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -32,4 +31,4 @@ const TaskSchema = new Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Task", TaskSchema);
+module.exports = mongoose.model("Task", TaskSchema);

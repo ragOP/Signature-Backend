@@ -2,39 +2,70 @@ const express = require("express");
 const router = express.Router();
 const Project = require("../../../models/project_0/projects/index");
 
-//Post - create project
-router.post("/create-project", async (req, res) => {
+// POST /projects
+// Create project
+router.post("/", async (req, res) => {
+  const { projectName, projectDescription, companyId, members } = req.body;
+
+  if (!projectName || !companyId) {
+    return res
+      .status(400)
+      .json({ message: "projectName and companyId are required" });
+  }
+
   try {
-    const { projectName, projectDescription, company } = req.body;
-    if (!projectName) {
-      return res.status(400).json({ message: "Company name is required" });
-    }
-    const existing = await Project.findOne({ projectName });
-    if (existing) {
-      return res.status(400).json({ message: "Company already exists" });
-    }
-    const data = await Project.create({
+    const newProject = new Project({
       projectName,
       projectDescription,
-      company,
+      companyId,
+      members,
     });
-    if (!data) {
-      return res.status(500).json({ message: "Failed to create company" });
-    }
-    return res.status(201).json({ message: "Company created", data });
+
+    await newProject.save();
+    res.status(201).json(newProject);
   } catch (error) {
-    return res.status(500).json({ message: "Internal server " });
+    console.error("Error creating project:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
-//Get - get all project
-router.get("/get-projects", async (req, res) => {
+
+// PUT /projects/:id
+// Update project details/members
+router.put("/:id", async (req, res) => {
+  const { projectName, projectDescription, members } = req.body;
+
   try {
-    const projects = await Project.find({}).sort({ createdAt: -1 });
-    return res
-      .status(200)
-      .json({ message: "Projects fetched", data: projects });
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      { projectName, projectDescription, members },
+      { new: true, runValidators: true }
+    );
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json(project);
   } catch (error) {
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error updating project:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// DELETE /projects/:id
+// Delete project
+router.delete("/:id", async (req, res) => {
+  try {
+    const project = await Project.findByIdAndDelete(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({ message: "Project deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
