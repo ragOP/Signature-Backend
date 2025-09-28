@@ -100,7 +100,8 @@ router.post("/create-order-abd", async (req, res) => {
  */
 router.delete("/delete-order-abd/:id", async (req, res) => {
   const { id } = req.params;
-  if (!id) return res.status(400).json({ success: false, error: "id required" });
+  if (!id)
+    return res.status(400).json({ success: false, error: "id required" });
 
   try {
     const order = await orderModel4Abd.findByIdAndDelete(id);
