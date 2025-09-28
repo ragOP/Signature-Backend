@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const Project = require("../../../models/project_0/projects/index");
 const Task = require("../../../models/project_0/task/index");
+const Company = require("../../../models/project_0/Company/index");
+const User = require("../../../models/project_0/user/index");
+const mongoose = require("mongoose");
 
 /**
  * @swagger
@@ -53,6 +56,40 @@ router.post("/", async (req, res) => {
       .json({ message: "projectName and companyId are required" });
   }
 
+  // Verify as valid mongo db id
+  if (!mongoose.Types.ObjectId.isValid(companyId)) {
+    return res.status(400).json({ message: "Invalid companyId" });
+  }
+
+  // Check if project name already exists
+  const existingProject = await Project.findOne({ projectName });
+  if (existingProject) {
+    return res.status(400).json({ message: "Project name already exists" });
+  }
+
+  // Check if company exists
+  const company = await Company.findById(companyId);
+  if (!company) {
+    return res.status(404).json({ message: "Company not found" });
+  }
+
+  // Verify actual mongo db id for member
+  const invalidMembers = members.filter(
+    (member) => !mongoose.Types.ObjectId.isValid(member)
+  );
+  if (invalidMembers.length > 0) {
+    return res
+      .status(400)
+      .json({ message: "Invalid member ID: " + invalidMembers.join(", ") });
+  }
+
+  // Check if members exist
+  const users = await User.find({ _id: { $in: members } });
+  if (users.length !== members.length) {
+    return res.status(404).json({ message: "Some members do not exist" });
+  }
+
+  // Create the project
   try {
     const newProject = new Project({
       projectName,
@@ -62,7 +99,10 @@ router.post("/", async (req, res) => {
     });
 
     await newProject.save();
-    res.status(201).json(newProject);
+    res.status(201).json({
+      message: "Project created successfully",
+      project: newProject,
+    });
   } catch (error) {
     console.error("Error creating project:", error);
     res.status(500).json({ message: "Internal server error" });
