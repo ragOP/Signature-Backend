@@ -7,7 +7,7 @@ const Company = require("../../../models/project_0/Company/index");
 const router = express.Router();
 
 // TODO: Use a secret from environment variables
-const JWT_SECRET = "your-super-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * @swagger
@@ -73,7 +73,11 @@ router.post("/signup", async (req, res) => {
 
     await newUser.save();
 
-    res.status(201).json({ message: "User created successfully" });
+    // Remove password from response for security
+    const { password: _, ...userResponse } = newUser.toObject();
+    res
+      .status(201)
+      .json({ message: "User created successfully", user: userResponse });
   } catch (error) {
     console.error("Error signing up:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -218,14 +222,18 @@ router.post("/signup/:token", async (req, res) => {
   const { fullName, password } = req.body;
 
   if (!fullName || !password) {
-    return res.status(400).json({ message: "fullName and password are required" });
+    return res
+      .status(400)
+      .json({ message: "fullName and password are required" });
   }
 
   try {
     const invite = await Invite.findOne({ token });
 
     if (!invite || invite.isAccepted) {
-      return res.status(400).json({ message: "Invalid or expired invite token" });
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired invite token" });
     }
 
     const company = await Company.findById(invite.companyId);
@@ -251,7 +259,9 @@ router.post("/signup/:token", async (req, res) => {
     await company.save();
     await invite.save();
 
-    res.status(201).json({ message: "User created and linked to company successfully" });
+    res
+      .status(201)
+      .json({ message: "User created and linked to company successfully" });
   } catch (error) {
     console.error("Error in invite-based signup:", error);
     res.status(500).json({ message: "Internal server error" });
