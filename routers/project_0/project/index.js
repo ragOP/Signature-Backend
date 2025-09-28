@@ -253,7 +253,7 @@ router.delete("/:id", async (req, res) => {
 
 /**
  * @swagger
- * /project/{id}/tasks:
+ * /project/tasks/{id}:
  *   get:
  *     summary: Get all tasks for a project
  *     tags: [Projects]
@@ -270,7 +270,7 @@ router.delete("/:id", async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get("/:id/tasks", async (req, res) => {
+router.get("/tasks/:id", async (req, res) => {
   try {
     const projectId = req.params.id;
 
