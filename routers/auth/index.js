@@ -16,11 +16,11 @@ router.route("/get-stats/record").get(async (req, res) => {
         const lander5Count = lander5.length;
         return res.status(200).json({ message: 'User statistics retrieved successfully', stats: { lander4:{
             count: lander4Count,
-            title: "Astra Soul",
+            title: "Signature Main",
             lastOrderTime: lander4.length ? lander4[lander4.length - 1].createdAt : null
         }, lander5: {
             count: lander5Count,
-            title: "Astra Soul ABD",
+            title: "Signature Rag",
             lastOrderTime: lander5.length ? lander5[lander5.length - 1].createdAt : null
         } } });
     } catch (error) {
@@ -39,11 +39,11 @@ router.route("/get-stats/abandoned").get(async (req, res) => {
         const lander5Count = lander5.length;
         return res.status(200).json({ message: 'User statistics retrieved successfully', stats: { lander4:{
             count: lander4Count,
-            title: "Astra Soul",
+            title: "Signature Main ABD",
             lastOrderTime: lander4.length ? lander4[lander4.length - 1].createdAt : null
         }, lander5: {
             count: lander5Count,
-            title: "Astra Soul ABD",
+            title: "Signature Rag ABD",
             lastOrderTime: lander5.length ? lander5[lander5.length - 1].createdAt : null
         } } });
     } catch (error) {
