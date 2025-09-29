@@ -2,6 +2,41 @@ const express = require("express");
 const router = express.Router();
 const Task = require("../../../models/project_0/task/index");
 const mongoose = require("mongoose");
+// const admin = require("../../../utils/firebaseNotification/firebase");
+const User = require("../../../models/project_0/user/index");
+// const schedule = require("node-schedule");
+/*
+async function sendreminder(taskId) {
+  const task = await Task.findById(taskId);
+  if (!task) {
+    return;
+  }
+  const eta = task.eta;
+  const reminderTime = eta.getTime() - 10 * 60 * 1000;
+  const now = new Date();
+  if (now > reminderTime || task.status === "completed") {
+    return;
+  }
+  if (reminderTime > now) {
+    schedule.scheduleJob(reminderTime, async () => {
+      console.log(`Reminder: Task "${newTask.title}" ETA ends in 1 hour.`);
+
+      await sendRemindernotification(assignedTo, newTask);
+    });
+  }
+  const user = await User.findById(task.assignedTo);
+  if (!user) {
+    return;
+  }
+  if (!user.fcmToken) {
+    return;
+  }
+  await admin.messaging().send({
+    token: user.fcmToken,
+    notification: { title: "Task Reminder", body: "You have a task reminder" },
+  });
+}
+  */
 
 /**
  * @swagger
@@ -46,7 +81,8 @@ const mongoose = require("mongoose");
  *         description: Internal server error
  */
 router.post("/", async (req, res) => {
-  const { title, description, projectId, assignedTo, eta } = req.body;
+  const { title, description, projectId, assignedTo, eta, status, priority } =
+    req.body;
 
   if (!title || !projectId) {
     return res
@@ -78,9 +114,12 @@ router.post("/", async (req, res) => {
       projectId,
       assignedTo,
       eta,
+      status,
+      priority,
     });
 
     await newTask.save();
+    // sendreminder(newTask._id);
     res.status(201).json({
       success: true,
       message: "Task created successfully",
@@ -92,6 +131,102 @@ router.post("/", async (req, res) => {
       success: false,
       message: "Internal server error",
     });
+  }
+});
+
+/**
+ * @swagger
+ * /task/update-status:
+ *   put:
+ *     summary: Update a task's status or priority
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: query
+ *         name: taskId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The task ID to update
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: ["to do", "in progress", "completed"]
+ *         required: false
+ *         description: New status for the task
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *           enum: ["low", "medium", "high"]
+ *         required: false
+ *         description: New priority for the task
+ *     responses:
+ *       200:
+ *         description: Task updated successfully
+ *       400:
+ *         description: Bad request (invalid params or values)
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Internal server error
+ */
+
+router.put("/update-status", async (req, res) => {
+  try {
+    const { taskId, status, priority } = req.query;
+    if (!taskId) {
+      return res.status(400).json({
+        success: false,
+        message: "TaskId are required",
+      });
+    }
+    const filter = {};
+    // validate taskId as a MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid taskId",
+      });
+    }
+    if (status) {
+      const allowed = ["to do", "in progress", "completed"];
+      if (!allowed.includes(status)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid status" });
+      }
+
+      filter.status = status;
+    }
+    if (priority) {
+      const allowed = ["low", "medium", "high"];
+      if (!allowed.includes(priority)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid priority" });
+      }
+
+      filter.priority = priority;
+    }
+
+    const task = await Task.findByIdAndUpdate(taskId, filter, { new: true });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Task updated successfully",
+      data: task,
+    });
+  } catch (error) {
+    console.error("Error updating task:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -135,7 +270,8 @@ router.post("/", async (req, res) => {
  *         description: Internal server error
  */
 router.put("/:id", async (req, res) => {
-  const { title, description, assignedTo, eta, status } = req.body;
+  const { title, description, assignedTo, eta, status, priority } =
+    req.body || {};
 
   if (!title) {
     return res.status(400).json({
@@ -169,7 +305,7 @@ router.put("/:id", async (req, res) => {
   try {
     const task = await Task.findByIdAndUpdate(
       req.params.id,
-      { title, description, assignedTo, eta, status },
+      { title, description, assignedTo, eta, status, priority },
       { new: true, runValidators: true }
     );
 
@@ -180,6 +316,8 @@ router.put("/:id", async (req, res) => {
       });
     }
 
+    // sendreminder(task._id);
+
     res.json({
       success: true,
       message: "Task updated successfully",
@@ -187,63 +325,6 @@ router.put("/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating task:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-/**
- * @swagger
- * /task/{id}/complete:
- *   put:
- *     summary: Mark a task as completed
- *     tags: [Tasks]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: The task ID
- *     responses:
- *       200:
- *         description: Task marked as completed
- *       404:
- *         description: Task not found
- *       500:
- *         description: Internal server error
- */
-router.put("/:id/complete", async (req, res) => {
-  try {
-    const taskId = req.params.id;
-
-    // validate taskId as a MongoDB ObjectId
-    if (!mongoose.Types.ObjectId.isValid(taskId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid taskId",
-      });
-    }
-
-    const task = await Task.findByIdAndUpdate(
-      taskId,
-      { isCompleted: true },
-      { new: true }
-    );
-
-    if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Task not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Task marked as completed",
-      data: task,
-    });
-  } catch (error) {
-    console.error("Error completing task:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
