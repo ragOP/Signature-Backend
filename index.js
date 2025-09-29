@@ -47,7 +47,7 @@ app.use("/api/project-0/auth", require("./routers/project_0/user/index"));
 app.use("/api/project-0/company", require("./routers/project_0/company/index"));
 app.use("/api/project-0/project", require("./routers/project_0/project/index"));
 app.use("/api/project-0/task", require("./routers/project_0/task/index"));
-app.use("/api/project-0/firebase", require("./routers/project_0/firebase/index"));
+// app.use("/api/project-0/firebase", require("./routers/project_0/firebase/index"));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
