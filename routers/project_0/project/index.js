@@ -171,55 +171,6 @@ router.put("/:id", async (req, res) => {
 
 /**
  * @swagger
- * /project/company/{id}:
- *   get:
- *     summary: Get all projects for a specific company
- *     tags: [Projects]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: The company ID
- *     responses:
- *       200:
- *         description: A list of projects for the company
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Project'
- *       404:
- *         description: Company not found
- *       500:
- *         description: Internal server error
- */
-router.get("/company/:id", async (req, res) => {
-  const companyId = req.params.id;
-
-  try {
-    // validate companyId as a MongoDB ObjectId
-    if (!mongoose.Types.ObjectId.isValid(companyId)) {
-      return res.status(400).json({ message: "Invalid companyId" });
-    }
-
-    const company = await Company.findById(companyId);
-    if (!company) {
-      return res.status(404).json({ message: "Company not found" });
-    }
-
-    const projects = await Project.find({ companyId });
-    res.json(projects);
-  } catch (error) {
-    console.error("Error fetching company projects:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-/**
- * @swagger
  * /project/{id}:
  *   delete:
  *     summary: Delete a project

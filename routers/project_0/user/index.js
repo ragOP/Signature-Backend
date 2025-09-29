@@ -2,8 +2,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../../../models/project_0/user/index");
-const Invite = require("../../../models/project_0/invite/index");
-const Company = require("../../../models/project_0/Company/index");
+const mongoose = require("mongoose");
 const router = express.Router();
 
 // TODO: Use a secret from environment variables
@@ -145,10 +144,58 @@ router.post("/login", async (req, res) => {
 
 /**
  * @swagger
- * /users/{id}:
+ * /auth/users:
+ *   get:
+ *     summary: Get all users
+ *     tags: [User]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search users by name or email
+ *     responses:
+ *       200:
+ *         description: List of users
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/users", async (req, res) => {
+  try {
+    let { search = "" } = req.query;
+
+    // Build search filter (case-insensitive match on name/email)
+    const filter = search
+      ? {
+          $or: [
+            { fullName: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
+
+    const users = await User.find(filter)
+      .select("-password") // Exclude password
+      .lean();
+
+    const totalUsers = await User.countDocuments(filter);
+
+    res.status(200).json({
+      total: totalUsers,
+      users,
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+/**
+ * @swagger
+ * /auth/users/{id}:
  *   get:
  *     summary: Get user profile by ID
- *     tags: [Users]
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: id
@@ -158,7 +205,7 @@ router.post("/login", async (req, res) => {
  *         description: The user ID
  *     responses:
  *       200:
- *         description: The user profile
+ *         description: The user profile with company details
  *       404:
  *         description: User not found
  *       500:
@@ -166,104 +213,39 @@ router.post("/login", async (req, res) => {
  */
 router.get("/users/:id", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).populate(
-      "companies.companyId",
-      "name description"
-    );
+    const { id } = req.params;
+
+    // ✅ Validate ID format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+
+    const user = await User.findById(id)
+      .select("-password -__v") // remove sensitive fields
+      .populate("companies.companyId", "name description createdBy");
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json(user);
+
+    // ✅ Clean response
+    const userResponse = {
+      _id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      companies: user.companies.map((c) => ({
+        companyId: c.companyId?._id,
+        name: c.companyId?.name,
+        description: c.companyId?.description,
+        role: c.role,
+      })),
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    res.status(200).json({ user: userResponse });
   } catch (error) {
     console.error("Error fetching user:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-/**
- * @swagger
- * /auth/signup/{token}:
- *   post:
- *     summary: Create a new user via invite
- *     tags: [Auth]
- *     parameters:
- *       - in: path
- *         name: token
- *         schema:
- *           type: string
- *         required: true
- *         description: The invite token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - fullName
- *               - password
- *             properties:
- *               fullName:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       201:
- *         description: User created and linked to company successfully
- *       400:
- *         description: Bad request
- *       404:
- *         description: Company not found
- *       500:
- *         description: Internal server error
- */
-router.post("/signup/:token", async (req, res) => {
-  const { token } = req.params;
-  const { fullName, password } = req.body;
-
-  if (!fullName || !password) {
-    return res
-      .status(400)
-      .json({ message: "fullName and password are required" });
-  }
-
-  try {
-    const invite = await Invite.findOne({ token });
-
-    if (!invite || invite.isAccepted) {
-      return res
-        .status(400)
-        .json({ message: "Invalid or expired invite token" });
-    }
-
-    const company = await Company.findById(invite.companyId);
-    if (!company) {
-      return res.status(404).json({ message: "Associated company not found" });
-    }
-
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    const newUser = new User({
-      fullName,
-      email: invite.email,
-      password: hashedPassword,
-    });
-
-    newUser.companies.push({ companyId: company._id, role: invite.role });
-    company.users.push({ userId: newUser._id, role: invite.role });
-
-    invite.isAccepted = true;
-
-    await newUser.save();
-    await company.save();
-    await invite.save();
-
-    res
-      .status(201)
-      .json({ message: "User created and linked to company successfully" });
-  } catch (error) {
-    console.error("Error in invite-based signup:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
