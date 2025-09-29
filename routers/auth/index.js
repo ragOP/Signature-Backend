@@ -5,21 +5,38 @@ const Order4Abd = require("../../models/orderModel4-abd");
 const SignatureRagOrder = require("../../models/signatureRagOrder");
 const signatureRagAbd = require("../../models/signatureRagAbd");
 
+function getYesterdayISTRange() {
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST = UTC+5:30
+
+  // Current UTC time
+  const nowUTC = new Date();
+
+  // Convert UTC → IST
+  const nowIST = new Date(nowUTC.getTime() + istOffset);
+
+  // Go to yesterday (IST)
+  const yesterdayIST = new Date(nowIST);
+  yesterdayIST.setDate(nowIST.getDate() - 1);
+
+  // Get IST start of yesterday
+  const startIST = new Date(yesterdayIST.setHours(0, 0, 0, 0));
+
+  // Get IST end of yesterday
+  const endIST = new Date(yesterdayIST.setHours(23, 59, 59, 999));
+
+  // Convert back to UTC (important for MongoDB)
+  return {
+    start: new Date(startIST.getTime() - istOffset),
+    end: new Date(endIST.getTime() - istOffset),
+  };
+}
+
 router.route("/get-stats/record").get(async (req, res) => {
   try {
-    const now = new Date();
+    const { start, end } = getYesterdayISTRange();
 
-    // Shift to IST by adding 5 hours 30 minutes
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-
-    // Go back 1 day in IST
-    const istYesterday = new Date(istNow);
-    istYesterday.setDate(istNow.getDate() - 1);
-
-    // Build query using IST-based range, but convert back to UTC
     const query = {
-      createdAt: { $gte: new Date(istYesterday.getTime() - istOffset) },
+      createdAt: { $gte: start, $lte: end },
     };
     const lander4 = await Order4.find(query).select("createdAt");
     const lander4Count = lander4.length;
@@ -53,19 +70,10 @@ router.route("/get-stats/record").get(async (req, res) => {
 
 router.route("/get-stats/abandoned").get(async (req, res) => {
   try {
-    const now = new Date();
+    const { start, end } = getYesterdayISTRange();
 
-    // Shift to IST by adding 5 hours 30 minutes
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffset);
-
-    // Go back 1 day in IST
-    const istYesterday = new Date(istNow);
-    istYesterday.setDate(istNow.getDate() - 1);
-
-    // Build query using IST-based range, but convert back to UTC
     const query = {
-      createdAt: { $gte: new Date(istYesterday.getTime() - istOffset) },
+      createdAt: { $gte: start, $lte: end },
     };
     const lander4 = await Order4Abd.find(query).select("createdAt");
     const lander4Count = lander4.length;
