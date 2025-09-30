@@ -536,7 +536,10 @@ router.get("/:id/projects", async (req, res) => {
   }
 
   try {
-    const projects = await Project.find({ companyId: companyId });
+    const projects = await Project.find({ companyId: companyId }).populate(
+      "members",
+      "fullName email"
+    );
     res.json({
       success: true,
       message: "Projects fetched successfully",
