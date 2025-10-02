@@ -19,6 +19,15 @@ const TaskSchema = new Schema(
     eta: {
       type: Date,
     },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+    },
+    status: {
+      type: String,
+      enum: ["to do", "in progress", "completed"],
+      default: "to do",
+    },
     isCompleted: {
       type: Boolean,
       default: false,

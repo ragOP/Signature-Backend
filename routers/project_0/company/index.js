@@ -2,9 +2,11 @@ const express = require("express");
 const router = express.Router();
 const Company = require("../../../models/project_0/Company/index");
 const User = require("../../../models/project_0/user/index");
-const Invite = require("../../../models/project_0/invite/index");
 const Project = require("../../../models/project_0/projects/index");
-const crypto = require("crypto");
+const {
+  isValidObjectId,
+  validateObjectIds,
+} = require("../../../utils/validMongoId");
 
 /**
  * @swagger
@@ -45,17 +47,36 @@ router.get("/:id", async (req, res) => {
     const userId = req.params.id;
 
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+        details: "User ID must be a valid MongoDB ObjectId",
+      });
     }
 
     const companies = await Company.find({
       $or: [{ createdBy: userId }, { "users.userId": userId }],
     });
 
-    res.json(companies);
+    res.json({
+      success: true,
+      message: "Companies fetched successfully",
+      data: companies,
+    });
   } catch (error) {
     console.error("Error fetching companies:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 });
 
@@ -77,31 +98,86 @@ router.get("/:id", async (req, res) => {
  *             properties:
  *               name:
  *                 type: string
+ *                 description: Company name
  *               description:
  *                 type: string
+ *                 description: Company description
  *               userId:
  *                 type: string
+ *                 description: ID of the user creating the company
+ *               members:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to add as members (optional)
  *     responses:
  *       201:
  *         description: Company created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Company'
  *       400:
  *         description: Bad request
  *       404:
- *         description: User not found
+ *         description: User not found or some members not found
  *       500:
  *         description: Internal server error
  */
 router.post("/", async (req, res) => {
-  const { name, description, userId } = req.body; // Assuming userId is passed in body for now
+  const { name, description, userId, members } = req.body;
 
   if (!name || !userId) {
-    return res.status(400).json({ message: "Name and userId are required" });
+    return res.status(400).json({
+      success: false,
+      message: "Name and userId are required",
+    });
+  }
+
+  // Validate userId format
+  if (!isValidObjectId(userId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid user ID format",
+      details: "User ID must be a valid MongoDB ObjectId",
+    });
+  }
+
+  // Validate members array if provided
+  if (members && Array.isArray(members) && members.length > 0) {
+    const memberValidation = validateObjectIds(members);
+    if (!memberValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid member ID format(s)",
+        details: "All member IDs must be valid MongoDB ObjectIds",
+        invalidIds: memberValidation.invalidIds,
+      });
+    }
   }
 
   try {
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    // Validate creator exists
+    const creator = await User.findById(userId);
+    if (!creator) {
+      return res.status(404).json({
+        success: false,
+        message: "Creator user not found",
+      });
+    }
+
+    // Validate members if provided
+    let validMembers = [];
+    if (members && Array.isArray(members) && members.length > 0) {
+      const memberUsers = await User.find({ _id: { $in: members } });
+      if (memberUsers.length !== members.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Some member users not found",
+          details: `Found ${memberUsers.length} out of ${members.length} members`,
+        });
+      }
+      validMembers = memberUsers;
     }
 
     const newCompany = new Company({
@@ -111,205 +187,314 @@ router.post("/", async (req, res) => {
     });
 
     // Add creator as admin
-    newCompany.users.push({ userId: user._id, role: "admin" });
-    user.companies.push({ companyId: newCompany._id, role: "admin" });
+    newCompany.users.push({ userId: creator._id, role: "admin" });
+    creator.companies.push({ companyId: newCompany._id, role: "admin" });
+
+    // Add members if provided
+    for (const member of validMembers) {
+      // Skip if member is the same as creator (already added as admin)
+      if (member._id.toString() !== userId) {
+        newCompany.users.push({ userId: member._id, role: "member" });
+        member.companies.push({ companyId: newCompany._id, role: "member" });
+      }
+    }
 
     await newCompany.save();
-    await user.save();
+    await creator.save();
 
-    res.status(201).json(newCompany);
+    // Save all member users
+    if (validMembers.length > 0) {
+      await User.bulkWrite(
+        validMembers.map((member) => ({
+          updateOne: {
+            filter: { _id: member._id },
+            update: { companies: member.companies },
+          },
+        }))
+      );
+    }
+
+    // Populate the response with user details
+    const populatedCompany = await Company.findById(newCompany._id)
+      .populate("createdBy", "fullName email")
+      .populate("users.userId", "fullName email");
+
+    res.status(201).json({
+      success: true,
+      message: "Company created successfully",
+      data: populatedCompany,
+    });
   } catch (error) {
     console.error("Error creating company:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-/**
- * @swagger
- * /company/{id}/invite:
- *   post:
- *     summary: Invite a user to a company
- *     tags: [Companies]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: The company ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *             properties:
- *               email:
- *                 type: string
- *               role:
- *                 type: string
- *                 enum: [admin, member]
- *     responses:
- *       201:
- *         description: Invite sent successfully
- *       400:
- *         description: Bad request
- *       404:
- *         description: Company not found
- *       500:
- *         description: Internal server error
- */
-router.post("/:id/invite", async (req, res) => {
-  const { email, role } = req.body;
-  const companyId = req.params.id;
-
-  if (!email) {
-    return res.status(400).json({ message: "Email is required" });
-  }
-
-  try {
-    const company = await Company.findById(companyId);
-    if (!company) {
-      return res.status(404).json({ message: "Company not found" });
-    }
-
-    const token = crypto.randomBytes(32).toString("hex");
-
-    const newInvite = new Invite({
-      email,
-      companyId,
-      role: role || "member",
-      token,
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
     });
-
-    await newInvite.save();
-
-    // TODO: Send email with invite link
-    // const inviteLink = `http://yourapp.com/auth/signup/${token}`;
-    // sendEmail(email, 'You have been invited to join a company', `Click here to join: ${inviteLink}`);
-
-    res.status(201).json({ message: "Invite sent successfully" });
-  } catch (error) {
-    console.error("Error sending invite:", error);
-    res.status(500).json({ message: "Internal server error" });
   }
 });
 
 /**
  * @swagger
- * /company/{id}/add-user:
- *   post:
- *     summary: Add an existing user to a company
+ * /company/{id}:
+ *   put:
+ *     summary: Update company details
  *     tags: [Companies]
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: string
- *         required: true
- *         description: The company ID
+ *         description: Company ID to update
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - userId
  *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Updated company name
+ *               description:
+ *                 type: string
+ *                 description: Updated company description
+ *               membersToAdd:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to add as members
+ *               membersToRemove:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to remove from company
  *               userId:
  *                 type: string
- *               role:
- *                 type: string
- *                 enum: [admin, member]
+ *                 description: ID of the user making the request (for authorization)
  *     responses:
  *       200:
- *         description: User added to company successfully
+ *         description: Company updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Company'
  *       400:
  *         description: Bad request
+ *       401:
+ *         description: Unauthorized - user not authorized to update this company
  *       404:
- *         description: Company or user not found
+ *         description: Company not found or some users not found
  *       500:
  *         description: Internal server error
  */
-router.post("/:id/add-user", async (req, res) => {
-  const { userId, role } = req.body;
-  const companyId = req.params.id;
+router.put("/:id", async (req, res) => {
+  const { id: companyId } = req.params;
+  const { name, description, membersToAdd, membersToRemove, userId } = req.body;
+
+  if (!companyId) {
+    return res.status(400).json({
+      success: false,
+      message: "Company ID is required",
+    });
+  }
 
   if (!userId) {
-    return res.status(400).json({ message: "userId is required" });
+    return res.status(400).json({
+      success: false,
+      message: "User ID is required for authorization",
+    });
+  }
+
+  // Validate companyId format
+  if (!isValidObjectId(companyId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid company ID format",
+      details: "Company ID must be a valid MongoDB ObjectId",
+    });
+  }
+
+  // Validate userId format
+  if (!isValidObjectId(userId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid user ID format",
+      details: "User ID must be a valid MongoDB ObjectId",
+    });
+  }
+
+  // Validate membersToAdd array if provided
+  if (membersToAdd && Array.isArray(membersToAdd) && membersToAdd.length > 0) {
+    const memberValidation = validateObjectIds(membersToAdd);
+    if (!memberValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid member ID format(s) in membersToAdd",
+        details: "All member IDs must be valid MongoDB ObjectIds",
+        invalidIds: memberValidation.invalidIds,
+      });
+    }
+  }
+
+  // Validate membersToRemove array if provided
+  if (
+    membersToRemove &&
+    Array.isArray(membersToRemove) &&
+    membersToRemove.length > 0
+  ) {
+    const memberValidation = validateObjectIds(membersToRemove);
+    if (!memberValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid member ID format(s) in membersToRemove",
+        details: "All member IDs must be valid MongoDB ObjectIds",
+        invalidIds: memberValidation.invalidIds,
+      });
+    }
   }
 
   try {
+    // Find the company
     const company = await Company.findById(companyId);
     if (!company) {
-      return res.status(404).json({ message: "Company not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Company not found",
+      });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Check if user is already in the company
-    if (company.users.some((u) => u.userId.equals(user._id))) {
-      return res
-        .status(400)
-        .json({ message: "User is already in the company" });
-    }
-
-    company.users.push({ userId: user._id, role: role || "member" });
-    user.companies.push({ companyId: company._id, role: role || "member" });
-
-    await company.save();
-    await user.save();
-
-    res.json({ message: "User added to company successfully" });
-  } catch (error) {
-    console.error("Error adding user to company:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-/**
- * @swagger
- * /company/{id}/members:
- *   get:
- *     summary: Get all members of a company
- *     tags: [Companies]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: The company ID
- *     responses:
- *       200:
- *         description: A list of company members
- *       404:
- *         description: Company not found
- *       500:
- *         description: Internal server error
- */
-router.get("/:id/members", async (req, res) => {
-  const companyId = req.params.id;
-
-  try {
-    const company = await Company.findById(companyId).populate(
-      "users.userId",
-      "fullName email"
+    // Check if user is authorized to update (must be admin)
+    const userInCompany = company.users.find(
+      (user) => user.userId.toString() === userId && user.role === "admin"
     );
-    if (!company) {
-      return res.status(404).json({ message: "Company not found" });
+
+    if (!userInCompany) {
+      return res.status(401).json({
+        message: "Unauthorized: You must be an admin to update this company",
+      });
     }
 
-    res.json(company.users);
+    // Update basic fields if provided
+    if (name !== undefined) company.name = name;
+    if (description !== undefined) company.description = description;
+
+    // Handle member additions
+    if (
+      membersToAdd &&
+      Array.isArray(membersToAdd) &&
+      membersToAdd.length > 0
+    ) {
+      // Validate that all users to add exist
+      const usersToAdd = await User.find({ _id: { $in: membersToAdd } });
+      if (usersToAdd.length !== membersToAdd.length) {
+        return res.status(404).json({
+          message: "Some users to add not found",
+          details: `Found ${usersToAdd.length} out of ${membersToAdd.length} users`,
+        });
+      }
+
+      // Add new members
+      for (const user of usersToAdd) {
+        // Check if user is already in company
+        const existingMember = company.users.find(
+          (member) => member.userId.toString() === user._id.toString()
+        );
+
+        if (!existingMember) {
+          company.users.push({ userId: user._id, role: "member" });
+          user.companies.push({ companyId: company._id, role: "member" });
+        }
+      }
+    }
+
+    // Handle member removals
+    if (
+      membersToRemove &&
+      Array.isArray(membersToRemove) &&
+      membersToRemove.length > 0
+    ) {
+      // Validate that all users to remove exist
+      const usersToRemove = await User.find({ _id: { $in: membersToRemove } });
+      if (usersToRemove.length !== membersToRemove.length) {
+        return res.status(404).json({
+          message: "Some users to remove not found",
+          details: `Found ${usersToRemove.length} out of ${membersToRemove.length} users`,
+        });
+      }
+
+      // Remove members (but not admins)
+      for (const user of usersToRemove) {
+        // Prevent removing the creator
+        if (user._id.toString() === company.createdBy.toString()) {
+          return res.status(400).json({
+            message: "Cannot remove the company creator",
+          });
+        }
+
+        // Find and remove the user from company
+        const memberIndex = company.users.findIndex(
+          (member) => member.userId.toString() === user._id.toString()
+        );
+
+        if (memberIndex !== -1) {
+          // Check if trying to remove an admin
+          if (company.users[memberIndex].role === "admin") {
+            return res.status(400).json({
+              message: "Cannot remove admin users. Change their role first.",
+            });
+          }
+
+          company.users.splice(memberIndex, 1);
+
+          // Remove company from user's companies array
+          user.companies = user.companies.filter(
+            (comp) => comp.companyId.toString() !== companyId
+          );
+        }
+      }
+    }
+
+    // Save the company
+    await company.save();
+
+    // Save all affected users
+    const allAffectedUsers = [
+      ...(membersToAdd ? await User.find({ _id: { $in: membersToAdd } }) : []),
+      ...(membersToRemove
+        ? await User.find({ _id: { $in: membersToRemove } })
+        : []),
+    ];
+
+    if (allAffectedUsers.length > 0) {
+      await User.bulkWrite(
+        allAffectedUsers.map((user) => ({
+          updateOne: {
+            filter: { _id: user._id },
+            update: { companies: user.companies },
+          },
+        }))
+      );
+    }
+
+    // Populate and return updated company
+    const updatedCompany = await Company.findById(company._id)
+      .populate("createdBy", "fullName email")
+      .populate("users.userId", "fullName email");
+
+    res.json({
+      success: true,
+      message: "Company updated successfully",
+      data: updatedCompany,
+    });
   } catch (error) {
-    console.error("Error fetching company members:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error updating company:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 });
 
@@ -335,12 +520,38 @@ router.get("/:id/members", async (req, res) => {
 router.get("/:id/projects", async (req, res) => {
   const companyId = req.params.id;
 
+  if (!companyId) {
+    return res.status(400).json({
+      success: false,
+      message: "Company ID is required",
+    });
+  }
+
+  if (!isValidObjectId(companyId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid company ID format",
+      details: "Company ID must be a valid MongoDB ObjectId",
+    });
+  }
+
   try {
-    const projects = await Project.find({ companyId: companyId });
-    res.json(projects);
+    const projects = await Project.find({ companyId: companyId }).populate(
+      "members",
+      "fullName email"
+    );
+    res.json({
+      success: true,
+      message: "Projects fetched successfully",
+      data: projects,
+    });
   } catch (error) {
     console.error("Error fetching projects:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 });
 

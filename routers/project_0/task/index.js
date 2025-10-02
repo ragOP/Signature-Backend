@@ -135,7 +135,7 @@ router.post("/", async (req, res) => {
  *         description: Internal server error
  */
 router.put("/:id", async (req, res) => {
-  const { title, description, assignedTo, eta, isCompleted } = req.body;
+  const { title, description, assignedTo, eta, status } = req.body;
 
   if (!title) {
     return res.status(400).json({
@@ -159,11 +159,17 @@ router.put("/:id", async (req, res) => {
       message: "Invalid assignedTo",
     });
   }
+  if (!["to do", "in progress", "completed"].includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid status",
+    });
+  }
 
   try {
     const task = await Task.findByIdAndUpdate(
       req.params.id,
-      { title, description, assignedTo, eta, isCompleted },
+      { title, description, assignedTo, eta, status },
       { new: true, runValidators: true }
     );
 
@@ -293,6 +299,87 @@ router.delete("/:id", async (req, res) => {
       success: false,
       message: "Internal server error",
     });
+  }
+});
+
+/**
+ * @swagger
+ * /task:
+ *   get:
+ *     summary: Get tasks with optional filters
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         description: Filter tasks assigned to a specific user (assignedTo)
+ *       - in: query
+ *         name: adminId
+ *         schema:
+ *           type: string
+ *         description: Filter tasks created by a specific admin (createdBy)
+ *       - in: query
+ *         name: projectId
+ *         schema:
+ *           type: string
+ *         description: Filter tasks by project
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: ["to do", "in progress", "completed"]
+ *         description: Filter tasks by status
+ *     responses:
+ *       200:
+ *         description: List of tasks
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/get-records", async (req, res) => {
+  try {
+    const { userId, adminId, projectId, status } = req.query;
+
+    const filter = {};
+
+    if (userId) {
+      filter.assignedTo = userId;
+      console.log(filter, "filter>>>>>>");
+    }
+
+    if (adminId) {
+      filter.createdBy = adminId;
+    }
+
+    if (projectId) {
+      filter.projectId = projectId;
+    }
+
+    if (status) {
+      const allowed = ["to do", "in progress", "completed"];
+      if (!allowed.includes(status)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid status" });
+      }
+
+      filter.status = status;
+    }
+
+    const tasks = await Task.find(filter)
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email")
+      .populate("projectId", "name")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, data: tasks });
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 });
 
