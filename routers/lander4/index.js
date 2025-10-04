@@ -30,6 +30,13 @@ router.post("/create-order", async (req, res) => {
     //     message: "Invalid Payment",
     //   });
     // }
+    const existingOrder = await orderModel4.findOne({ orderId });
+          if (existingOrder) {
+          return res.status(200).json({
+            success: true,
+            data: existingOrder,
+          });
+        }
     
     const payload = {
       amount,
@@ -162,6 +169,26 @@ router.get("/get-orders/abd-main", async (req, res) => {
     success: true,
     data: orders,
   });
+});
+
+router.patch("/delivery-status/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deliveryStatusEmail = req.body.deliveryStatusEmail;
+
+    const order = await orderModel4.findByIdAndUpdate(
+      id,
+      { deliveryStatusEmail: deliveryStatusEmail},
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: order,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 module.exports = router;
