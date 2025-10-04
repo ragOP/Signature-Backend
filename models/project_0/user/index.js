@@ -15,6 +15,14 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
+    fcmToken: {
+      type: String,
+      default: "",
+    },
+    apnToken: {
+      type: String,
+      default: "",
+    },
     companies: [
       {
         companyId: {

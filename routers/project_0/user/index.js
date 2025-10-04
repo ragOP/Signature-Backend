@@ -47,7 +47,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
  *         description: Internal server error
  */
 router.post("/signup", async (req, res) => {
-  const { fullName, email, password } = req.body;
+  const { fullName, email, password, fcmToken, apnToken } = req.body;
 
   if (!fullName || !email || !password) {
     return res
@@ -68,6 +68,8 @@ router.post("/signup", async (req, res) => {
       fullName,
       email,
       password: hashedPassword,
+      fcmToken,
+      apnToken,
     });
 
     await newUser.save();
@@ -114,7 +116,7 @@ router.post("/signup", async (req, res) => {
  *         description: Internal server error
  */
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, fcmToken, apnToken } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: "email and password are required" });
@@ -130,6 +132,8 @@ router.post("/login", async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
+    await User.findByIdAndUpdate(user._id, { fcmToken, apnToken });
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
       expiresIn: "1h",

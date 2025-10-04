@@ -2,41 +2,10 @@ const express = require("express");
 const router = express.Router();
 const Task = require("../../../models/project_0/task/index");
 const mongoose = require("mongoose");
-// const admin = require("../../../utils/firebaseNotification/firebase");
 const User = require("../../../models/project_0/user/index");
-// const schedule = require("node-schedule");
-/*
-async function sendreminder(taskId) {
-  const task = await Task.findById(taskId);
-  if (!task) {
-    return;
-  }
-  const eta = task.eta;
-  const reminderTime = eta.getTime() - 10 * 60 * 1000;
-  const now = new Date();
-  if (now > reminderTime || task.status === "completed") {
-    return;
-  }
-  if (reminderTime > now) {
-    schedule.scheduleJob(reminderTime, async () => {
-      console.log(`Reminder: Task "${newTask.title}" ETA ends in 1 hour.`);
-
-      await sendRemindernotification(assignedTo, newTask);
-    });
-  }
-  const user = await User.findById(task.assignedTo);
-  if (!user) {
-    return;
-  }
-  if (!user.fcmToken) {
-    return;
-  }
-  await admin.messaging().send({
-    token: user.fcmToken,
-    notification: { title: "Task Reminder", body: "You have a task reminder" },
-  });
-}
-  */
+const agenda = require("../../../config/agenda");
+const { sendPushNotification } = require("../../../utils/sendNotification");
+const { sendViaAPNs } = require("../../../utils/sendNotificationApn");
 
 /**
  * @swagger
@@ -119,8 +88,49 @@ router.post("/", async (req, res) => {
     });
 
     await newTask.save();
-    // sendreminder(newTask._id);
-    res.status(201).json({
+    // Send immediate assignment notification if assignedTo exists
+    if (assignedTo) {
+      const user = await User.findById(assignedTo);
+      if (user) {
+        const titleText = newTask.title
+          ? `Assigned: ${newTask.title}`
+          : "Task Assigned";
+        const bodyText =
+          newTask.description || "You have been assigned a new task.";
+        const hasFcm = Boolean(user.fcmToken && String(user.fcmToken).trim());
+        if (hasFcm) {
+          await sendPushNotification(
+            user.fcmToken,
+            null,
+            user._id,
+            { title: titleText, body: bodyText },
+            { taskId: String(newTask._id), type: "assigned" }
+          );
+        } else if (user.apnToken) {
+          await sendViaAPNs({
+            apnToken: user.apnToken,
+            notificationData: { title: titleText, body: bodyText },
+            userId: user._id,
+          });
+        }
+      }
+    }
+
+    // Schedule ETA reminder one hour before if eta exists
+    if (eta) {
+      const etaDate = new Date(eta);
+      if (!isNaN(etaDate.getTime())) {
+        const scheduleAt = new Date(etaDate.getTime() - 60 * 60 * 1000);
+        if (scheduleAt > new Date()) {
+          await agenda.schedule(scheduleAt, "task-notify", {
+            taskId: newTask._id,
+            type: "eta_reminder",
+          });
+        }
+      }
+    }
+
+    return res.status(201).json({
       success: true,
       message: "Task created successfully",
       task: newTask,
@@ -303,6 +313,7 @@ router.put("/:id", async (req, res) => {
   }
 
   try {
+    const prev = await Task.findById(req.params.id).lean();
     const task = await Task.findByIdAndUpdate(
       req.params.id,
       { title, description, assignedTo, eta, status, priority },
@@ -316,7 +327,60 @@ router.put("/:id", async (req, res) => {
       });
     }
 
-    // sendreminder(task._id);
+    // If assignment changed, send assignment notification to new assignee
+    if (
+      task &&
+      assignedTo &&
+      String(prev?.assignedTo || "") !== String(assignedTo)
+    ) {
+      const user = await User.findById(assignedTo);
+      if (user) {
+        const titleText = task.title
+          ? `Assigned: ${task.title}`
+          : "Task Assigned";
+        const bodyText =
+          task.description || "You have been assigned a new task.";
+        const hasFcm = Boolean(user.fcmToken && String(user.fcmToken).trim());
+        if (hasFcm) {
+          await sendPushNotification(
+            user.fcmToken,
+            null,
+            user._id,
+            { title: titleText, body: bodyText },
+            { taskId: String(task._id), type: "assigned" }
+          );
+        } else if (user.apnToken) {
+          await sendViaAPNs({
+            apnToken: user.apnToken,
+            notificationData: { title: titleText, body: bodyText },
+            userId: user._id,
+          });
+        }
+      }
+    }
+
+    // Reschedule ETA reminder if eta changed
+    const prevEta = prev?.eta ? new Date(prev.eta) : null;
+    const nextEta = eta ? new Date(eta) : null;
+    const etaChanged =
+      (prevEta?.getTime?.() || 0) !== (nextEta?.getTime?.() || 0);
+    if (task && etaChanged) {
+      // cancel existing reminders for this task
+      await agenda.cancel({
+        name: "task-notify",
+        "data.taskId": String(task._id),
+        "data.type": "eta_reminder",
+      });
+      if (nextEta && !isNaN(nextEta.getTime())) {
+        const scheduleAt = new Date(nextEta.getTime() - 60 * 60 * 1000);
+        if (scheduleAt > new Date()) {
+          await agenda.schedule(scheduleAt, "task-notify", {
+            taskId: task._id,
+            type: "eta_reminder",
+          });
+        }
+      }
+    }
 
     res.json({
       success: true,
@@ -411,6 +475,11 @@ router.delete("/:id", async (req, res) => {
  *           type: string
  *           enum: ["to do", "in progress", "completed"]
  *         description: Filter tasks by status
+ *       - in: query
+ *         name: taskId
+ *         schema:
+ *           type: string
+ *         description: Filter tasks by taskId
  *     responses:
  *       200:
  *         description: List of tasks
@@ -421,7 +490,7 @@ router.delete("/:id", async (req, res) => {
  */
 router.get("/get-records", async (req, res) => {
   try {
-    const { userId, adminId, projectId, status } = req.query;
+    const { userId, adminId, projectId, status, taskId } = req.query;
 
     const filter = {};
 
@@ -447,6 +516,9 @@ router.get("/get-records", async (req, res) => {
       }
 
       filter.status = status;
+    }
+    if (taskId) {
+      filter._id = taskId;
     }
 
     const tasks = await Task.find(filter)
