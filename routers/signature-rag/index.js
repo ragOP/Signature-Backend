@@ -7,7 +7,7 @@ const {
   signatureOrderConfirmationHTML,
 } = require("../../emails/orderConfirmation");
 const { sendEmail } = require("../../utils/mailer");
-const emailLog3 = require("../../models/emailLog3");
+const emailLog3 = require("../../models/emaillog3");
 
 async function sendAndLogConfirmationEmailNodeMailer({
   email,
