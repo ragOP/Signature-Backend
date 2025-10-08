@@ -78,7 +78,7 @@ async function sendEmail(opts) {
   const fromName = opts.fromName || process.env.FROM_NAME || "AstraSoul";
 
   const info = await transporter.sendMail({
-    from: opts.adminEmail || `${fromName} <${fromEmail}>`,
+    from: fromEmail || `${fromName} <${fromEmail}>`,
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
