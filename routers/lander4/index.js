@@ -130,6 +130,7 @@ router.post("/create-order", async (req, res) => {
       additionalProducts,
       razorpaySignature,
     };
+    // let emailOrderId = payload.orderId;
     const order = await orderModel4.create(payload);
     (async () => {
       if (email) {
@@ -176,6 +177,7 @@ router.post("/create-order-abd", async (req, res) => {
     remarks,
     additionalProducts = [],
   } = req.body;
+  console.log("create-order-abd payload:", req.body);
 
   try {
     const payload = {
@@ -188,23 +190,8 @@ router.post("/create-order-abd", async (req, res) => {
       remarks: remarks,
       additionalProducts: additionalProducts,
     };
-    const order = await orderModel4Abd.create(payload);
-    (async () => {
-      if (email) {
-        await sendAndLogConfirmationEmailNodeMailer({
-          email,
-          fullName,
-          orderId: abdOrderId || `ORDER_${Date.now()}`,
-          amount,
-          additionalProducts,
-        });
-      } else {
-        console.warn(
-          "[order-email] no email in payload; skipping Resend + log"
-        );
-      }
-    })();
 
+    const order = await orderModel4Abd.create(payload);
     return res.status(200).json({ success: true, data: order });
   } catch (error) {
     console.error("create-order-abd error:", error);
