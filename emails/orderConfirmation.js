@@ -31,23 +31,27 @@ function signatureOrderConfirmationHTML(data) {
     logoUrl = "https://www.thesignaturestudio.in/logo.png", // Replace with actual Signature Studio logo
   } = data;
 
-  const itemsHTML = items.map(
-    (it) => `
+  const itemsHTML = items
+    .map(
+      (it) => `
     <tr>
       <td style="padding:8px 0;color:#111;">${it.title}</td>
       <td style="padding:8px 0;text-align:right;color:#111;">${currencyINR(
         it.price
       )}</td>
     </tr>`
-  ).join("");
+    )
+    .join("");
 
-  const addonsHTML = additionalProducts.map(
-    (t) => `
+  const addonsHTML = additionalProducts
+    .map(
+      (t) => `
     <tr>
       <td style="padding:6px 0;color:#444;">${t} <span style="font-size:12px;color:#777">(Add-on)</span></td>
       <td style="padding:6px 0;text-align:right;color:#444;"></td>
     </tr>`
-  ).join("");
+    )
+    .join("");
 
   return `<!doctype html>
   <html><head>
@@ -62,18 +66,22 @@ function signatureOrderConfirmationHTML(data) {
           <!-- Header with Logo -->
           <tr>
             <td style="padding:20px 28px;background:#1f2937;color:#fff;text-align:center;">
-              <img src="${logoUrl}" alt="The Signature Studio" style="height:50px;margin-bottom:8px;"/>
+              <img src="" alt="The Signature Studio" style="height:50px;margin-bottom:8px;"/>
               <h1 style="margin:0;font-size:20px;font-weight:700;">The Signature Studio</h1>
               <p style="margin:4px 0 0;font-size:12px;opacity:0.9;">Order Confirmation</p>
             </td>
           </tr>
           <!-- Body -->
           <tr><td style="padding:28px;">
-            <p style="margin:0 0 12px;color:#111;font-size:16px;">Hi ${customerName || "there"},</p>
+            <p style="margin:0 0 12px;color:#111;font-size:16px;">Hi ${
+              customerName || "there"
+            },</p>
             <p style="margin:0 0 16px;color:#333;line-height:1.6;">Thank you for shopping with us! Your payment was successful and your order is confirmed.</p>
             <div style="margin:18px 0;padding:12px 14px;background:#f3f4f6;border-radius:10px;">
               <p style="margin:0;color:#111;"><strong>Order ID:</strong> ${orderId}</p>
-              <p style="margin:4px 0 0;color:#111;"><strong>Amount Paid:</strong> ${currencyINR(amount)}</p>
+              <p style="margin:4px 0 0;color:#111;"><strong>Amount Paid:</strong> ${currencyINR(
+                amount
+              )}</p>
             </div>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:8px;">
               <tr>
@@ -84,7 +92,9 @@ function signatureOrderConfirmationHTML(data) {
               ${addonsHTML}
               <tr>
                 <td style="padding:12px 0;border-top:1px dashed #d1d5db;color:#111;"><strong>Total</strong></td>
-                <td style="padding:12px 0;border-top:1px dashed #d1d5db;text-align:right;color:#111;"><strong>${currencyINR(amount)}</strong></td>
+                <td style="padding:12px 0;border-top:1px dashed #d1d5db;text-align:right;color:#111;"><strong>${currencyINR(
+                  amount
+                )}</strong></td>
               </tr>
             </table>
             <p style="margin:18px 0 0;color:#333;line-height:1.6;">Your order is being processed. You’ll receive updates via WhatsApp/Email. For queries, reply to <a href="mailto:orders@thesignaturestudio.in" style="color:#1f2937;text-decoration:none;">orders@thesignaturestudio.in</a>.</p>
