@@ -3,9 +3,11 @@ const router = express.Router();
 const SignatureRagOrderModel = require("../../models/signatureRagOrder");
 const crypto = require("crypto");
 const signatureRagAbdOrderModel = require("../../models/signatureRagAbd");
-const sendAndLogConfirmationEmailNodeMailer = require("../../utils/emailHelper");
-const emailLog3 = require("../../models/emailLog3");
+const {
+  signatureOrderConfirmationHTML,
+} = require("../../emails/orderConfirmation");
 const { sendEmail } = require("../../utils/mailer");
+const emailLog3 = require("../../models/emailLog3");
 
 async function sendAndLogConfirmationEmailNodeMailer({
   email,
