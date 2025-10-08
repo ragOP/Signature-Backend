@@ -3,6 +3,80 @@ const router = express.Router();
 const SignatureRagOrderModel = require("../../models/signatureRagOrder");
 const crypto = require("crypto");
 const signatureRagAbdOrderModel = require("../../models/signatureRagAbd");
+const sendAndLogConfirmationEmailNodeMailer = require("../../utils/emailHelper");
+const emailLog3 = require("../../models/emailLog3");
+const { sendEmail } = require("../../utils/mailer");
+
+async function sendAndLogConfirmationEmailNodeMailer({
+  email,
+  name,
+  orderId,
+  amount,
+  additionalProducts = [],
+}) {
+  const adminBcc = process.env.ADMIN_ORDER_BCC || "";
+
+  const html = signatureOrderConfirmationHTML({
+    customerName: name || "",
+    orderId,
+    amount: Number(amount || 0),
+    items: [{ title: "Signature Order", price: Number(amount || 0) }],
+    additionalProducts,
+  });
+
+  try {
+    const result = await sendEmail({
+      to: email,
+      subject: `Your Signature Order is Confirmed (#${orderId})`,
+      html,
+      bcc: adminBcc || undefined,
+      // Optional: helpful tags in Resend dashboard
+      tags: [
+        { name: "type", value: "order_confirmation" },
+        { name: "orderId", value: String(orderId) },
+      ],
+    });
+
+    const id = result?.id || "";
+    const status = id ? "accepted" : "error";
+
+    await emailLog3.create({
+      toEmail: email,
+      bcc: adminBcc,
+      subject: `Your Signature Order is Confirmed (#${orderId})`,
+      orderId,
+      status, // "accepted" if we got an id from Resend
+      accepted: id ? [email] : [],
+      rejected: [],
+      response: id, // store the Resend message id here
+      messageId: id, // also store in messageId
+      errorMessage: "",
+      meta: { amount: Number(amount || 0), name, additionalProducts },
+      sentAt: new Date(),
+    });
+
+    console.log(
+      `[email-log] NodeMailer queued id=${id} for ${email} / ${orderId}`
+    );
+  } catch (err) {
+    console.error("[order-email] NodeMailer failed:", err?.message || err);
+
+    await emailLog3.create({
+      toEmail: email,
+      bcc: adminBcc,
+      subject: `Your Signature Order is Confirmed (#${orderId})`,
+      orderId,
+      status: "error",
+      accepted: [],
+      rejected: [],
+      response: "",
+      messageId: "",
+      errorMessage: err?.message || String(err),
+      meta: { amount: Number(amount || 0), name, additionalProducts },
+      sentAt: new Date(),
+    });
+  }
+}
 
 /**
  * POST /api/signature/rag/create-order
@@ -34,12 +108,12 @@ router.post("/create-order", async (req, res) => {
     //   });
     // }
     const existingOrder = await SignatureRagOrderModel.findOne({ orderId });
-          if (existingOrder) {
-          return res.status(200).json({
-            success: true,
-            data: existingOrder,
-          });
-        }
+    if (existingOrder) {
+      return res.status(200).json({
+        success: true,
+        data: existingOrder,
+      });
+    }
     const payload = {
       amount,
       orderId,
@@ -54,6 +128,21 @@ router.post("/create-order", async (req, res) => {
       razorpaySignature,
     };
     const order = await SignatureRagOrderModel.create(payload);
+    (async () => {
+      if (email) {
+        await sendAndLogConfirmationEmailNodeMailer({
+          email,
+          fullName,
+          orderId: orderId || `ORDER_${Date.now()}`,
+          amount,
+          additionalProducts,
+        });
+      } else {
+        console.warn(
+          "[order-email] no email in payload; skipping Resend + log"
+        );
+      }
+    })();
     return res.status(200).json({
       success: true,
       data: order,
@@ -141,9 +230,9 @@ router.get("/get-orders-abd", async (req, res) => {
 
 router.get("/get-orders/main", async (req, res) => {
   const { page = 1, limit = 1000, startDate, endDate } = req.query;
-  const query = {}; 
+  const query = {};
   if (startDate && endDate) {
-    query.createdAt = { 
+    query.createdAt = {
       $gte: new Date(startDate),
       $lte: new Date(endDate),
     };
@@ -162,7 +251,7 @@ router.get("/get-orders/abd-main", async (req, res) => {
   const { page = 1, limit = 1000, startDate, endDate } = req.query;
   const query = {};
   if (startDate && endDate) {
-    query.createdAt = { 
+    query.createdAt = {
       $gte: new Date(startDate),
       $lte: new Date(endDate),
     };
@@ -185,7 +274,7 @@ router.patch("/delivery-status/:id", async (req, res) => {
 
     const order = await signatureRagAbdOrderModel.findByIdAndUpdate(
       id,
-      { deliveryStatusEmail: deliveryStatusEmail},
+      { deliveryStatusEmail: deliveryStatusEmail },
       { new: true }
     );
 
