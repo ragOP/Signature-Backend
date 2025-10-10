@@ -5,53 +5,11 @@ const Order4Abd = require("../../models/orderModel4-abd");
 const SignatureRagOrder = require("../../models/signatureRagOrder");
 const signatureRagAbd = require("../../models/signatureRagAbd");
 
-function getYesterdayISTRange() {
-   // IST offset = +5 hours 30 minutes
-  const istOffset = 5.5 * 60 * 60 * 1000;
-
-  // Current time in UTC
-  const nowUTC = new Date();
-
-  // Convert UTC → IST
-  const nowIST = new Date(nowUTC.getTime() + istOffset);
-
-  // Go to "yesterday" in IST
-  const yesterdayIST = new Date(
-    nowIST.getFullYear(),
-    nowIST.getMonth(),
-    nowIST.getDate() - 1
-  );
-
-  // Start of yesterday in IST (00:00:00)
-  const startIST = new Date(
-    yesterdayIST.getFullYear(),
-    yesterdayIST.getMonth(),
-    yesterdayIST.getDate(),
-    0, 0, 0, 0
-  );
-
-  // End of yesterday in IST (23:59:59.999)
-  const endIST = new Date(
-    yesterdayIST.getFullYear(),
-    yesterdayIST.getMonth(),
-    yesterdayIST.getDate(),
-    23, 59, 59, 999
-  );
-
-  // Convert IST → UTC (because MongoDB expects UTC)
-  const startUTC = new Date(startIST.getTime() - istOffset);
-  const endUTC = new Date(endIST.getTime() - istOffset);
-
-  return { start: startUTC, end: endUTC };
-}
-
 router.route("/get-stats/record").get(async (req, res) => {
   try {
-    const { start, end } = getYesterdayISTRange();
-
-    const query = {
-      createdAt: { $gte: start, $lte: end },
-    };
+      const query = {
+        createdAt: { $gte: new Date(new Date().setDate(new Date().getDate() - 1)) }
+      };
     const lander4 = await Order4.find(query).select("createdAt");
     const lander4Count = lander4.length;
     const lander5 = await SignatureRagOrder.find(query).select("createdAt");
@@ -84,11 +42,9 @@ router.route("/get-stats/record").get(async (req, res) => {
 
 router.route("/get-stats/abandoned").get(async (req, res) => {
   try {
-    const { start, end } = getYesterdayISTRange();
-
     const query = {
-      createdAt: { $gte: start, $lte: end },
-    };
+            createdAt: { $gte: new Date(new Date().setDate(new Date().getDate() - 1)) }
+        };
     const lander4 = await Order4Abd.find(query).select("createdAt");
     const lander4Count = lander4.length;
     const lander5 = await signatureRagAbd.find(query).select("createdAt");
