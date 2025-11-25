@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const razorpay = require("../../config/razorpay");
 const PaymentController = require("../../payment/index.js");
+const PaymentControllerV2 = require("../../payment-2/index.js");
+
 router.post("/razorpay", async (req, res) => {
   try {
     const { amount } = req.body;
@@ -29,5 +31,8 @@ router.post("/razorpay", async (req, res) => {
 router.post("/create-session", PaymentController.createCashfreeSession);
 
 router.get("/details/:id", PaymentController.getCashfreePaymentDetails);
+
+router.post("/create-session-v2", PaymentControllerV2.createCashfreeSessionV2);
+router.get("/details-v2/:id", PaymentControllerV2.getCashfreePaymentDetailsV2);
 
 module.exports = router;
