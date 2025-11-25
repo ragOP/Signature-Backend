@@ -40,6 +40,9 @@ app.use("/api/lander4", require("./routers/lander4/index"));
 // ---- Signature Rag -----//
 app.use("/api/signature/rag", require("./routers/signature-rag/index"));
 
+// ---- Signature Rag 1 -----//
+app.use("/api/signature/rag-v2", require("./routers/signature-rag-1/index"));
+
 app.use("/api/phonepe-v2", require("./routers/phonepeV2/index"));
 
 // ---- Project 0 -----// Company
