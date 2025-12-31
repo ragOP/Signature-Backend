@@ -37,6 +37,8 @@ app.use("/api/payment", require("./routers/payment/index"));
 // ---- Signature -----//
 app.use("/api/lander4", require("./routers/lander4/index"));
 
+app.use("/api/lander5", require("./routers/lander5/index"));
+
 // ---- Signature Rag -----//
 app.use("/api/signature/rag", require("./routers/signature-rag/index"));
 
