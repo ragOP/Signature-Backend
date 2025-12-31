@@ -40,4 +40,4 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Order4Ab5", orderSchema);
+module.exports = mongoose.model("Order99Abd", orderSchema);
