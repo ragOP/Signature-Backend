@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const orderModel4 = require("../../models/orderModel5");
+const orderModel5 = require("../../models/orderModel5");
 const crypto = require("crypto");
-const orderModel4Abd = require("../../models/orderModel5-abd");
+const orderModel5Abd = require("../../models/orderModel5-abd");
 
 const {
   signatureOrderConfirmationHTML,
@@ -109,7 +109,7 @@ router.post("/create-order", async (req, res) => {
     //     message: "Invalid Payment",
     //   });
     // }
-    const existingOrder = await orderModel4.findOne({ orderId });
+    const existingOrder = await orderModel5.findOne({ orderId });
     if (existingOrder) {
       return res.status(200).json({
         success: true,
@@ -131,7 +131,7 @@ router.post("/create-order", async (req, res) => {
       razorpaySignature,
     };
     // let emailOrderId = payload.orderId;
-    const order = await orderModel4.create(payload);
+    const order = await orderModel5.create(payload);
     (async () => {
       if (email) {
         await sendAndLogConfirmationEmailNodeMailer({
@@ -157,7 +157,7 @@ router.post("/create-order", async (req, res) => {
 });
 
 router.get("/get-orders", async (req, res) => {
-  const orders = await orderModel4.find({}).sort({ createdAt: -1 });
+  const orders = await orderModel5.find({}).sort({ createdAt: -1 });
   return res.status(200).json({
     success: true,
     data: orders,
@@ -191,7 +191,7 @@ router.post("/create-order-abd", async (req, res) => {
       additionalProducts: additionalProducts,
     };
 
-    const order = await orderModel4Abd.create(payload);
+    const order = await orderModel5Abd.create(payload);
     return res.status(200).json({ success: true, data: order });
   } catch (error) {
     console.error("create-order-abd error:", error);
@@ -208,7 +208,7 @@ router.delete("/delete-order-abd/:id", async (req, res) => {
     return res.status(400).json({ success: false, error: "id required" });
 
   try {
-    const order = await orderModel4Abd.findByIdAndDelete(id);
+    const order = await orderModel5Abd.findByIdAndDelete(id);
     return res.status(200).json({
       success: true,
       data: order,
@@ -224,7 +224,7 @@ router.delete("/delete-order-abd/:id", async (req, res) => {
  * GET /api/lander4/get-orders-abd
  */
 router.get("/get-orders-abd", async (req, res) => {
-  const orders = await orderModel4Abd.find({}).sort({ createdAt: -1 });
+  const orders = await orderModel5Abd.find({}).sort({ createdAt: -1 });
   return res.status(200).json({ success: true, data: orders });
 });
 
@@ -237,7 +237,7 @@ router.get("/get-orders/main", async (req, res) => {
       $lte: new Date(endDate),
     };
   }
-  const orders = await orderModel4
+  const orders = await orderModel5
     .find(query)
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -257,7 +257,7 @@ router.get("/get-orders/abd-main", async (req, res) => {
       $lte: new Date(endDate),
     };
   }
-  const orders = await orderModel4Abd
+  const orders = await orderModel5Abd
     .find(query)
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -273,7 +273,7 @@ router.patch("/delivery-status/:id", async (req, res) => {
     const { id } = req.params;
     const deliveryStatusEmail = req.body.deliveryStatusEmail;
 
-    const order = await orderModel4.findByIdAndUpdate(
+    const order = await orderModel5.findByIdAndUpdate(
       id,
       { deliveryStatusEmail: deliveryStatusEmail },
       { new: true }
