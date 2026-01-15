@@ -10,6 +10,7 @@ const {
 
 const { sendEmail } = require("../../utils/mailer");
 const emailLog2 = require("../../models/emailLog2");
+const orderModel90 = require("../../models/orderModel90");
 
 async function sendAndLogConfirmationEmailNodeMailer({
   email,
@@ -157,7 +158,7 @@ router.post("/create-order", async (req, res) => {
 });
 
 router.get("/get-orders", async (req, res) => {
-  const orders = await orderModel5.find({}).sort({ createdAt: -1 });
+  const orders = await orderModel90.find({}).sort({ createdAt: -1 });
   return res.status(200).json({
     success: true,
     data: orders,
