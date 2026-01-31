@@ -51,6 +51,7 @@ app.use("/api/lander30", require("./routers/lander30/index"));
 app.use("/api/lander90", require("./routers/lander90/index"));
 app.use("/api/lander31", require("./routers/lander31/index"));
 app.use("/api/lander34", require("./routers/lander34/index"));
+app.use("/api/lander41", require("./routers/lander41/index"));
 
 // ---- Project 0 -----// Company
 app.use("/api/project-0/auth", require("./routers/project_0/user/index"));
