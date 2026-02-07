@@ -1,0 +1,258 @@
+const express = require("express");
+const router = express.Router();
+const orderModel77 = require("../../models/orderModel77");
+const orderModel77Abd = require("../../models/orderModel77-abd");
+
+const { signatureOrderConfirmationHTML } = require("../../emails/orderConfirmation");
+
+const { sendEmail } = require("../../utils/mailer");
+const emailLog2 = require("../../models/emailLog2");
+
+async function sendAndLogConfirmationEmailNodeMailer({
+  email,
+  name,
+  fullName,
+  orderId,
+  amount,
+  additionalProducts = [],
+}) {
+  const adminBcc = process.env.ADMIN_ORDER_BCC || "";
+
+  const html = signatureOrderConfirmationHTML({
+    customerName: name || fullName || "",
+    orderId,
+    amount: Number(amount || 0),
+    items: [{ title: "Signature Order", price: Number(amount || 0) }],
+    additionalProducts,
+  });
+
+  try {
+    const result = await sendEmail({
+      to: email,
+      subject: `Your Signature Order is Confirmed (#${orderId})`,
+      html,
+      bcc: adminBcc || undefined,
+      tags: [
+        { name: "type", value: "order_confirmation" },
+        { name: "orderId", value: String(orderId) },
+      ],
+    });
+
+    const id = result?.id || "";
+    const status = id ? "accepted" : "error";
+
+    await emailLog2.create({
+      toEmail: email,
+      bcc: adminBcc,
+      subject: `Your Signature Order is Confirmed (#${orderId})`,
+      orderId,
+      status,
+      accepted: id ? [email] : [],
+      rejected: [],
+      response: id,
+      messageId: id,
+      errorMessage: "",
+      meta: {
+        amount: Number(amount || 0),
+        name: name || fullName,
+        additionalProducts,
+      },
+      sentAt: new Date(),
+    });
+
+    console.log(`[email-log] NodeMailer queued id=${id} for ${email} / ${orderId}`);
+  } catch (err) {
+    console.error("[order-email] NodeMailer failed:", err?.message || err);
+
+    await emailLog2.create({
+      toEmail: email,
+      bcc: adminBcc,
+      subject: `Your Signature Order is Confirmed (#${orderId})`,
+      orderId,
+      status: "error",
+      accepted: [],
+      rejected: [],
+      response: "",
+      messageId: "",
+      errorMessage: err?.message || String(err),
+      meta: {
+        amount: Number(amount || 0),
+        name: name || fullName,
+        additionalProducts,
+      },
+      sentAt: new Date(),
+    });
+  }
+}
+
+router.post("/create-order", async (req, res) => {
+  const {
+    amount,
+    orderId,
+    fullName,
+    email,
+    phoneNumber,
+    profession,
+    remarks,
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    additionalProducts = [],
+  } = req.body;
+
+  console.log("create-order payload:", req.body);
+
+  try {
+    const existingOrder = await orderModel77.findOne({ orderId });
+    if (existingOrder) {
+      return res.status(200).json({ success: true, data: existingOrder });
+    }
+
+    const payload = {
+      amount,
+      orderId,
+      fullName,
+      email,
+      phoneNumber,
+      profession,
+      remarks,
+      razorpayOrderId,
+      razorpayPaymentId,
+      additionalProducts,
+      razorpaySignature,
+    };
+
+    const order = await orderModel77.create(payload);
+
+    (async () => {
+      if (email) {
+        await sendAndLogConfirmationEmailNodeMailer({
+          email,
+          fullName,
+          orderId: orderId || `ORDER_${Date.now()}`,
+          amount,
+          additionalProducts,
+        });
+      } else {
+        console.warn("[order-email] no email in payload; skipping Resend + log");
+      }
+    })();
+
+    return res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/get-orders", async (req, res) => {
+  const orders = await orderModel77.find({}).sort({ createdAt: -1 });
+  return res.status(200).json({ success: true, data: orders });
+});
+
+router.post("/create-order-abd", async (req, res) => {
+  const {
+    amount,
+    fullName,
+    email,
+    phoneNumber,
+    profession,
+    remarks,
+    additionalProducts = [],
+  } = req.body;
+
+  console.log("create-order-abd payload:", req.body);
+
+  try {
+    const payload = {
+      abdOrderId: `ord_${Date.now()}_${Math.floor(Math.random() * 1e5)}`,
+      amount,
+      fullName,
+      email,
+      phoneNumber,
+      profession,
+      remarks,
+      additionalProducts,
+    };
+
+    const order = await orderModel77Abd.create(payload);
+    return res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    console.error("create-order-abd error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/delete-order-abd/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ success: false, error: "id required" });
+
+  try {
+    const order = await orderModel77Abd.findByIdAndDelete(id);
+    return res.status(200).json({
+      success: true,
+      data: order,
+      message: "Abandoned Order deleted successfully",
+    });
+  } catch (error) {
+    console.error("delete-order-abd error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/get-orders-abd", async (req, res) => {
+  const orders = await orderModel77Abd.find({}).sort({ createdAt: -1 });
+  return res.status(200).json({ success: true, data: orders });
+});
+
+router.get("/get-orders/main", async (req, res) => {
+  const { page = 1, limit = 1000, startDate, endDate } = req.query;
+
+  const query = {};
+  if (startDate && endDate) {
+    query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+  }
+
+  const orders = await orderModel77
+    .find(query)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  return res.status(200).json({ success: true, data: orders });
+});
+
+router.get("/get-orders/abd-main", async (req, res) => {
+  const { page = 1, limit = 1000, startDate, endDate } = req.query;
+
+  const query = {};
+  if (startDate && endDate) {
+    query.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) };
+  }
+
+  const orders = await orderModel77Abd
+    .find(query)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  return res.status(200).json({ success: true, data: orders });
+});
+
+router.patch("/delivery-status/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deliveryStatusEmail = req.body.deliveryStatusEmail;
+
+    const order = await orderModel77.findByIdAndUpdate(
+      id,
+      { deliveryStatusEmail: deliveryStatusEmail },
+      { new: true }
+    );
+
+    return res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
