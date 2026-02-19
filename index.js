@@ -62,6 +62,8 @@ app.use("/api/project-0/task", require("./routers/project_0/task/index"));
 // app.use("/api/project-0/firebase", require("./routers/project_0/firebase/index"));
 app.use("/api/auth", require("./routers/auth/index"));
 
+app.use("/api/log", require("./routers/log/index"));
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 app.listen(PORT, () => {
